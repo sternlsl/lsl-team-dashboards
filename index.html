@@ -3,29 +3,40 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>LSL Workshop Attendance Dashboard</title>
+<title>LSL workshop attendance dashboard</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <style>
   :root {
-    --bg:        #0f0f11;
-    --surface:   #18181c;
-    --surface2:  #222228;
-    --border:    #2e2e38;
-    --accent:    #7b61ff;
-    --accent2:   #ff6b6b;
-    --accent3:   #34d399;
-    --accent4:   #fbbf24;
-    --text:      #e8e8f0;
-    --muted:     #6b6b80;
-    --radius:    10px;
+    --bg: #f7f8fb;
+    --surface: #ffffff;
+    --surface-alt: #eefbf8;
+    --surface-blue: #eef7fc;
+    --border: #dce0e9;
+    --border-strong: #bfd7dd;
+    --text: #333333;
+    --text-strong: #000000;
+    --muted: #666666;
+    --teal-light: #89e5da;
+    --teal: #00b5a8;
+    --teal-dark: #10998c;
+    --blue-light: #71cce1;
+    --blue: #41b0e7;
+    --blue-dark: #189ccd;
+    --purple-light: #8788c1;
+    --purple: #6c6cb4;
+    --purple-dark: #525299;
+    --shadow: 0 14px 38px rgba(16, 153, 140, 0.08);
+    --radius: 18px;
+    --radius-sm: 12px;
+    --max-width: 1280px;
 
-    --palette: #7b61ff, #ff6b6b, #34d399, #fbbf24, #60a5fa, #f472b6, #a78bfa, #2dd4bf, #fb923c, #e879f9;
+    --palette: #10998c, #41b0e7, #6c6cb4, #00b5a8, #189ccd, #525299, #89e5da, #71cce1;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -33,83 +44,119 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Montserrat', Arial, sans-serif;
     font-size: 14px;
+    line-height: 1.5;
     min-height: 100vh;
+    background-image:
+      radial-gradient(circle at top left, rgba(113, 204, 225, 0.22), transparent 34%),
+      radial-gradient(circle at top right, rgba(137, 229, 218, 0.24), transparent 30%),
+      linear-gradient(180deg, #f9fcfd 0%, #f7f8fb 28%, #f7f8fb 100%);
   }
+
+  a {
+    color: var(--teal-dark);
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 2px;
+  }
+
+  button, select { font: inherit; }
 
   /* ── HEADER ── */
   header {
-    padding: 28px 40px 24px;
-    border-bottom: 1px solid var(--border);
+    padding: 24px 32px 20px;
+    border-bottom: 1px solid rgba(220, 224, 233, 0.92);
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
     gap: 16px;
     position: sticky;
     top: 0;
-    background: rgba(15,15,17,.92);
-    backdrop-filter: blur(12px);
+    background: rgba(247, 248, 251, 0.94);
+    backdrop-filter: blur(14px);
     z-index: 100;
   }
+  header::after {
+    content: '';
+    position: absolute;
+    left: 32px;
+    right: 32px;
+    bottom: 0;
+    height: 4px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--teal) 0%, var(--blue) 50%, var(--purple) 100%);
+  }
   .header-left h1 {
-    font-family: 'DM Serif Display', serif;
-    font-size: 26px;
-    letter-spacing: -.3px;
-    line-height: 1;
+    font-family: 'Lato', Arial, sans-serif;
+    font-size: 1.9rem;
+    line-height: 1.1;
+    color: var(--text-strong);
   }
   .header-left p {
-    margin-top: 4px;
+    margin-top: 6px;
     color: var(--muted);
-    font-size: 13px;
-    font-family: 'DM Mono', monospace;
+    font-size: 0.95rem;
   }
   .header-right {
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
   #status-pill {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 7px 14px;
     border-radius: 99px;
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     color: var(--muted);
-    transition: all .3s;
+    background: rgba(255, 255, 255, 0.78);
+    transition: all .25s ease;
   }
   #status-pill.connected {
-    border-color: var(--accent3);
-    color: var(--accent3);
-    background: rgba(52,211,153,.08);
+    border-color: rgba(16, 153, 140, 0.28);
+    color: var(--teal-dark);
+    background: rgba(137, 229, 218, 0.28);
   }
-  #sign-in-btn {
-    background: var(--accent);
+  #sign-in-btn,
+  #landing-btn {
+    background: linear-gradient(135deg, var(--teal-dark), var(--blue-dark));
     color: #fff;
     border: none;
-    padding: 9px 20px;
-    border-radius: var(--radius);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
+    padding: 11px 22px;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+    box-shadow: 0 10px 22px rgba(24, 156, 205, 0.2);
+  }
+  #sign-in-btn:hover,
+  #landing-btn:hover {
+    opacity: 0.96;
+    transform: translateY(-1px);
+    box-shadow: 0 14px 26px rgba(24, 156, 205, 0.24);
+  }
+  #sign-in-btn:active,
+  #landing-btn:active { transform: translateY(0); }
+  #sign-out-btn {
+    background: #fff;
+    color: var(--purple-dark);
+    border: 2px solid rgba(108, 108, 180, 0.22);
+    padding: 10px 16px;
+    border-radius: 999px;
+    font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
-    transition: opacity .2s, transform .1s;
-  }
-  #sign-in-btn:hover { opacity: .85; transform: translateY(-1px); }
-  #sign-in-btn:active { transform: translateY(0); }
-  #sign-out-btn {
-    background: transparent;
-    color: var(--muted);
-    border: 1px solid var(--border);
-    padding: 8px 16px;
-    border-radius: var(--radius);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 12px;
-    cursor: pointer;
-    transition: color .2s;
+    transition: background-color .2s ease, border-color .2s ease;
     display: none;
   }
-  #sign-out-btn:hover { color: var(--text); }
+  #sign-out-btn:hover {
+    background: rgba(135, 136, 193, 0.08);
+    border-color: rgba(108, 108, 180, 0.4);
+  }
 
   /* ── LANDING ── */
   #landing {
@@ -117,155 +164,179 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: calc(100vh - 90px);
-    gap: 16px;
+    min-height: calc(100vh - 102px);
+    gap: 18px;
     text-align: center;
-    padding: 40px;
+    padding: 56px 24px 64px;
+    position: relative;
+  }
+  #landing::before {
+    content: '';
+    width: min(100%, 980px);
+    position: absolute;
+    height: 0;
+  }
+  #landing > * {
+    position: relative;
+    z-index: 1;
   }
   #landing .big {
-    font-family: 'DM Serif Display', serif;
-    font-size: 42px;
-    line-height: 1.1;
-    max-width: 520px;
+    font-family: 'Lato', Arial, sans-serif;
+    font-size: clamp(2.4rem, 5vw, 4.25rem);
+    line-height: 1.04;
+    max-width: 780px;
+    color: var(--text-strong);
   }
-  #landing .big em { color: var(--accent); font-style: italic; }
+  #landing .big em {
+    color: var(--purple-dark);
+    font-style: normal;
+  }
   #landing .sub {
     color: var(--muted);
-    max-width: 380px;
-    line-height: 1.6;
+    max-width: 620px;
+    font-size: 1.02rem;
+    line-height: 1.75;
   }
   #landing-btn {
-    margin-top: 8px;
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    padding: 14px 32px;
-    border-radius: var(--radius);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity .2s, transform .1s;
+    margin-top: 10px;
+    padding-inline: 32px;
   }
-  #landing-btn:hover { opacity: .85; transform: translateY(-1px); }
 
   /* ── FILTERS ── */
   #filters {
+    max-width: var(--max-width);
+    margin: 28px auto 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
-    padding: 20px 40px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
+    gap: 14px;
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
   }
   .filter-group {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
+    flex: 1 1 180px;
   }
   .filter-group label {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text);
   }
   .filter-group select {
-    background: var(--surface2);
-    border: 1px solid var(--border);
+    background: #fff;
+    border: 2px solid var(--border);
     color: var(--text);
-    padding: 7px 30px 7px 10px;
-    border-radius: 6px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
+    padding: 11px 38px 11px 12px;
+    border-radius: 12px;
+    font-size: 0.94rem;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b6b80'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%2310998C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 10px center;
+    background-position: right 12px center;
     cursor: pointer;
     min-width: 150px;
-    transition: border-color .2s;
+    transition: border-color .2s ease, box-shadow .2s ease;
   }
   .filter-group select:focus {
     outline: none;
-    border-color: var(--accent);
+    border-color: var(--teal-dark);
+    box-shadow: 0 0 0 4px rgba(137, 229, 218, 0.28);
   }
   #reset-btn {
     align-self: flex-end;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    padding: 7px 14px;
-    border-radius: 6px;
-    font-size: 12px;
+    background: rgba(82, 82, 153, 0.08);
+    border: 2px solid rgba(82, 82, 153, 0.14);
+    color: var(--purple-dark);
+    padding: 11px 18px;
+    border-radius: 12px;
+    font-size: 0.92rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: color .2s, border-color .2s;
+    transition: background-color .2s ease, border-color .2s ease;
   }
-  #reset-btn:hover { color: var(--text); border-color: var(--text); }
+  #reset-btn:hover {
+    background: rgba(82, 82, 153, 0.12);
+    border-color: rgba(82, 82, 153, 0.22);
+  }
 
   /* ── DASHBOARD ── */
   #dashboard { display: none; }
 
   /* ── KPI ROW ── */
   .kpi-row {
+    max-width: var(--max-width);
+    margin: 24px auto 0;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 1px;
-    background: var(--border);
-    border-bottom: 1px solid var(--border);
+    gap: 18px;
   }
   .kpi {
-    background: var(--surface);
-    padding: 24px 28px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.92) 100%);
+    padding: 26px 24px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
+    min-height: 158px;
   }
   .kpi-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: .1em;
+    font-size: 0.82rem;
+    font-weight: 700;
     color: var(--muted);
   }
   .kpi-value {
-    font-family: 'DM Serif Display', serif;
-    font-size: 38px;
-    line-height: 1;
+    font-family: 'Lato', Arial, sans-serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.05;
+    color: var(--text-strong);
   }
   .kpi-sub {
-    font-size: 12px;
+    font-size: 0.9rem;
     color: var(--muted);
   }
-  .kpi:nth-child(1) .kpi-value { color: var(--accent); }
-  .kpi:nth-child(2) .kpi-value { color: var(--accent3); }
-  .kpi:nth-child(3) .kpi-value { color: var(--accent4); }
-  .kpi:nth-child(4) .kpi-value { color: var(--accent2); }
+  .kpi:nth-child(1) { background: linear-gradient(180deg, rgba(137, 229, 218, 0.26), rgba(255,255,255,0.98)); }
+  .kpi:nth-child(2) { background: linear-gradient(180deg, rgba(113, 204, 225, 0.24), rgba(255,255,255,0.98)); }
+  .kpi:nth-child(3) { background: linear-gradient(180deg, rgba(135, 136, 193, 0.2), rgba(255,255,255,0.98)); }
+  .kpi:nth-child(4) { background: linear-gradient(180deg, rgba(0, 181, 168, 0.18), rgba(255,255,255,0.98)); }
+  .kpi:nth-child(1) .kpi-value { color: var(--teal-dark); }
+  .kpi:nth-child(2) .kpi-value { color: var(--blue-dark); }
+  .kpi:nth-child(3) .kpi-value { color: var(--purple-dark); }
+  .kpi:nth-child(4) .kpi-value { color: var(--teal); }
 
   /* ── CHART GRID ── */
   .chart-grid {
+    max-width: var(--max-width);
+    margin: 24px auto 0;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1px;
-    background: var(--border);
-    border-bottom: 1px solid var(--border);
+    gap: 20px;
   }
   .chart-grid.full { grid-template-columns: 1fr; }
   .chart-card {
-    background: var(--surface);
+    background: rgba(255, 255, 255, 0.94);
     padding: 28px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
     gap: 16px;
   }
   .chart-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 17px;
+    font-family: 'Lato', Arial, sans-serif;
+    font-size: 1.22rem;
+    color: var(--text-strong);
   }
   .chart-subtitle {
-    font-size: 12px;
+    font-size: 0.92rem;
     color: var(--muted);
-    margin-top: -10px;
+    margin-top: -8px;
   }
   .chart-wrap {
     position: relative;
@@ -275,54 +346,63 @@
 
   /* ── TABLE ── */
   .table-section {
-    padding: 32px 40px;
+    max-width: var(--max-width);
+    margin: 24px auto 40px;
+    padding: 0;
   }
   .table-header {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
+    gap: 16px;
     margin-bottom: 16px;
   }
   .table-header h2 {
-    font-family: 'DM Serif Display', serif;
-    font-size: 20px;
+    font-family: 'Lato', Arial, sans-serif;
+    font-size: 1.5rem;
+    color: var(--text-strong);
   }
   .table-header span {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
+    font-size: 0.9rem;
+    font-weight: 700;
     color: var(--muted);
   }
-  .tbl-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+  .tbl-wrap {
+    overflow-x: auto;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: var(--shadow);
+  }
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: 0.95rem;
   }
   th {
-    background: var(--surface2);
-    padding: 10px 14px;
+    background: var(--surface-blue);
+    padding: 14px 16px;
     text-align: left;
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    color: var(--muted);
-    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text);
+    border-bottom: 2px solid var(--border);
     white-space: nowrap;
   }
   td {
-    padding: 10px 14px;
+    padding: 14px 16px;
     border-bottom: 1px solid var(--border);
     color: var(--text);
+    vertical-align: top;
   }
   tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--surface2); }
+  tr:hover td { background: #fbfdfe; }
   .badge {
     display: inline-block;
-    padding: 2px 8px;
+    padding: 4px 10px;
     border-radius: 99px;
-    font-size: 11px;
-    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 700;
   }
 
   /* ── LOADER ── */
@@ -334,14 +414,13 @@
     min-height: calc(100vh - 90px);
     gap: 16px;
     color: var(--muted);
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
+    font-size: 0.95rem;
   }
   .spinner {
     width: 36px;
     height: 36px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
+    border: 4px solid rgba(220, 224, 233, 0.8);
+    border-top-color: var(--teal-dark);
     border-radius: 50%;
     animation: spin .8s linear infinite;
   }
@@ -350,23 +429,60 @@
   /* ── ERROR ── */
   #error-msg {
     display: none;
-    margin: 40px;
-    padding: 20px 24px;
-    background: rgba(255,107,107,.08);
-    border: 1px solid rgba(255,107,107,.3);
-    border-radius: var(--radius);
-    color: var(--accent2);
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
+    max-width: min(var(--max-width), calc(100% - 48px));
+    margin: 24px auto 0;
+    padding: 18px 20px;
+    background: rgba(82, 82, 153, 0.08);
+    border: 2px solid rgba(82, 82, 153, 0.18);
+    border-radius: var(--radius-sm);
+    color: var(--purple-dark);
+    font-size: 0.95rem;
+    font-weight: 600;
     line-height: 1.6;
   }
 
-  @media (max-width: 800px) {
+  @media (max-width: 980px) {
     .kpi-row { grid-template-columns: 1fr 1fr; }
     .chart-grid { grid-template-columns: 1fr; }
-    header { padding: 16px 20px; }
-    #filters { padding: 16px 20px; }
-    .table-section { padding: 24px 20px; }
+  }
+
+  @media (max-width: 800px) {
+    header {
+      padding: 18px 20px 16px;
+      align-items: flex-start;
+      flex-direction: column;
+    }
+    header::after {
+      left: 20px;
+      right: 20px;
+    }
+    .header-right { width: 100%; justify-content: flex-start; }
+    #filters {
+      margin: 20px 20px 0;
+      padding: 18px;
+    }
+    .kpi-row,
+    .chart-grid,
+    .table-section {
+      margin-left: 20px;
+      margin-right: 20px;
+    }
+    .table-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .kpi-row { grid-template-columns: 1fr; }
+    #landing {
+      padding: 40px 20px 56px;
+      min-height: calc(100vh - 120px);
+    }
+    .chart-card,
+    .kpi {
+      padding: 22px 18px;
+    }
   }
 </style>
 </head>
@@ -375,7 +491,7 @@
 <!-- ═══════════════ HEADER ═══════════════ -->
 <header>
   <div class="header-left">
-    <h1>LSL Workshop Attendance</h1>
+    <h1>LSL workshop attendance</h1>
     <p>Learning Science Lab · NYU Stern</p>
   </div>
   <div class="header-right">
@@ -387,8 +503,8 @@
 
 <!-- ═══════════════ LANDING ═══════════════ -->
 <div id="landing">
-  <p class="big">Workshop insights, <em>at a glance.</em></p>
-  <p class="sub">Sign in with your NYU Google account to load attendance data directly from Sheets.</p>
+  <p class="big">Workshop attendance insights for the <em>Learning Science Lab</em>.</p>
+  <p class="sub">Sign in with your NYU Google account to review workshop reach, participation patterns, and event-level attendance data drawn directly from Google Sheets.</p>
   <button id="landing-btn" onclick="signIn()">Sign in with Google</button>
 </div>
 
@@ -411,7 +527,7 @@
       <select id="f-semester"><option value="">All semesters</option></select>
     </div>
     <div class="filter-group">
-      <label>Tag / Subject</label>
+      <label>Tag / subject</label>
       <select id="f-tag"><option value="">All subjects</option></select>
     </div>
     <div class="filter-group">
@@ -432,7 +548,7 @@
   <!-- KPIs -->
   <div class="kpi-row">
     <div class="kpi">
-      <span class="kpi-label">Total Attendees</span>
+      <span class="kpi-label">Total attendees</span>
       <span class="kpi-value" id="kpi-total">—</span>
       <span class="kpi-sub">unique attendance records</span>
     </div>
@@ -442,12 +558,12 @@
       <span class="kpi-sub">distinct workshops</span>
     </div>
     <div class="kpi">
-      <span class="kpi-label">Avg per Event</span>
+      <span class="kpi-label">Average per event</span>
       <span class="kpi-value" id="kpi-avg">—</span>
       <span class="kpi-sub">attendees</span>
     </div>
     <div class="kpi">
-      <span class="kpi-label">Show Rate</span>
+      <span class="kpi-label">Show rate</span>
       <span class="kpi-value" id="kpi-show">—</span>
       <span class="kpi-sub">of RSVPs attended</span>
     </div>
@@ -456,12 +572,12 @@
   <!-- ROW 1: Semester + Tag -->
   <div class="chart-grid">
     <div class="chart-card">
-      <div class="chart-title">Attendance by Semester</div>
+      <div class="chart-title">Attendance by semester</div>
       <div class="chart-subtitle">Actual attendees only</div>
       <div class="chart-wrap"><canvas id="chart-semester"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">Attendance by Subject Tag</div>
+      <div class="chart-title">Attendance by subject tag</div>
       <div class="chart-subtitle">Workshop topic area</div>
       <div class="chart-wrap"><canvas id="chart-tag"></canvas></div>
     </div>
@@ -470,12 +586,12 @@
   <!-- ROW 2: Type + Department -->
   <div class="chart-grid">
     <div class="chart-card">
-      <div class="chart-title">Attendance by Event Type</div>
+      <div class="chart-title">Attendance by event type</div>
       <div class="chart-subtitle">Bootcamp, workshop, etc.</div>
       <div class="chart-wrap"><canvas id="chart-type"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">Attendance by Affiliation</div>
+      <div class="chart-title">Attendance by affiliation</div>
       <div class="chart-subtitle">Faculty, staff, student…</div>
       <div class="chart-wrap"><canvas id="chart-affiliation"></canvas></div>
     </div>
@@ -484,7 +600,7 @@
   <!-- ROW 3: Department bar (full width) -->
   <div class="chart-grid full">
     <div class="chart-card">
-      <div class="chart-title">Attendance by Department</div>
+      <div class="chart-title">Attendance by department</div>
       <div class="chart-subtitle">Top departments represented</div>
       <div class="chart-wrap tall"><canvas id="chart-dept"></canvas></div>
     </div>
@@ -493,7 +609,7 @@
   <!-- TABLE -->
   <div class="table-section">
     <div class="table-header">
-      <h2>Workshop Breakdown</h2>
+      <h2>Workshop breakdown</h2>
       <span id="tbl-count">— events</span>
     </div>
     <div class="tbl-wrap">
@@ -506,7 +622,7 @@
             <th>Type</th>
             <th>Attendees</th>
             <th>RSVPs</th>
-            <th>Show Rate</th>
+            <th>Show rate</th>
           </tr>
         </thead>
         <tbody id="tbl-body"></tbody>
@@ -529,9 +645,8 @@ const SCOPE       = 'https://www.googleapis.com/auth/spreadsheets.readonly';
 //  PALETTE
 // ═══════════════════════════════════════════════
 const COLORS = [
-  '#7b61ff','#ff6b6b','#34d399','#fbbf24',
-  '#60a5fa','#f472b6','#a78bfa','#2dd4bf',
-  '#fb923c','#e879f9','#86efac','#67e8f9'
+  '#10998c', '#41b0e7', '#6c6cb4', '#00b5a8',
+  '#189ccd', '#525299', '#89e5da', '#71cce1'
 ];
 
 // ═══════════════════════════════════════════════
@@ -772,31 +887,31 @@ function renderChart(id, data, type, horizontal = false) {
           display: isDoughnut,
           position: 'right',
           labels: {
-            color: '#e8e8f0',
-            font: { family: 'DM Sans', size: 11 },
+            color: '#333333',
+            font: { family: 'Montserrat', size: 12 },
             boxWidth: 12,
-            padding: 10,
+            padding: 14,
           }
         },
         tooltip: {
-          backgroundColor: '#222228',
-          borderColor: '#2e2e38',
-          borderWidth: 1,
-          titleColor: '#e8e8f0',
-          bodyColor: '#6b6b80',
-          titleFont: { family: 'DM Mono', size: 11 },
-          bodyFont:  { family: 'DM Sans', size: 13 },
+          backgroundColor: '#ffffff',
+          borderColor: '#dce0e9',
+          borderWidth: 2,
+          titleColor: '#000000',
+          bodyColor: '#333333',
+          titleFont: { family: 'Lato', size: 12 },
+          bodyFont:  { family: 'Montserrat', size: 13 },
         }
       },
       scales: isDoughnut ? {} : {
         x: {
-          grid:  { color: '#2e2e38', drawBorder: false },
-          ticks: { color: '#6b6b80', font: { family: 'DM Mono', size: 10 },
+          grid:  { color: '#dce0e9', drawBorder: false },
+          ticks: { color: '#666666', font: { family: 'Montserrat', size: 11 },
                    maxRotation: horizontal ? 0 : 40 }
         },
         y: {
-          grid:  { color: '#2e2e38', drawBorder: false },
-          ticks: { color: '#6b6b80', font: { family: 'DM Mono', size: 10 } },
+          grid:  { color: '#dce0e9', drawBorder: false },
+          ticks: { color: '#666666', font: { family: 'Montserrat', size: 11 } },
           beginAtZero: true
         }
       }
@@ -821,11 +936,16 @@ function renderTable(rows) {
   const events = Object.values(evMap).sort((a,b) => b.attended - a.attended);
   document.getElementById('tbl-count').textContent = events.length + ' events';
 
-  const typeColors = { Bootcamp:'#7b61ff', Workshop:'#34d399', Seminar:'#fbbf24', Webinar:'#60a5fa' };
+  const typeColors = {
+    Bootcamp: '#525299',
+    Workshop: '#10998c',
+    Seminar: '#6c6cb4',
+    Webinar: '#189ccd'
+  };
 
   document.getElementById('tbl-body').innerHTML = events.map(e => {
     const rate  = e.rsvpd ? Math.round((e.attended / e.rsvpd) * 100) + '%' : '—';
-    const color = typeColors[e.type] || '#6b6b80';
+    const color = typeColors[e.type] || '#666666';
     return `<tr>
       <td>${e.event}</td>
       <td>${e.semester}</td>
@@ -864,7 +984,7 @@ function showError(msg) {
   setUIState('landing');
   const el = document.getElementById('error-msg');
   el.style.display = 'block';
-  el.textContent   = '⚠ ' + msg;
+  el.textContent   = 'Notice: ' + msg;
 }
 </script>
 </body>
