@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LSL Workshop Attendance Dashboard</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+  :root {
+    --bg:        #0f0f11;
+    --surface:   #18181c;
+    --surface2:  #222228;
+    --border:    #2e2e38;
+    --accent:    #7b61ff;
+    --accent2:   #ff6b6b;
+    --accent3:   #34d399;
+    --accent4:   #fbbf24;
+    --text:      #e8e8f0;
+    --muted:     #6b6b80;
+    --radius:    10px;
+
+    --palette: #7b61ff, #ff6b6b, #34d399, #fbbf24, #60a5fa, #f472b6, #a78bfa, #2dd4bf, #fb923c, #e879f9;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    padding: 28px 40px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    background: rgba(15,15,17,.92);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+  .header-left h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    letter-spacing: -.3px;
+    line-height: 1;
+  }
+  .header-left p {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  #status-pill {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    transition: all .3s;
+  }
+  #status-pill.connected {
+    border-color: var(--accent3);
+    color: var(--accent3);
+    background: rgba(52,211,153,.08);
+  }
+  #sign-in-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 9px 20px;
+    border-radius: var(--radius);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .2s, transform .1s;
+  }
+  #sign-in-btn:hover { opacity: .85; transform: translateY(-1px); }
+  #sign-in-btn:active { transform: translateY(0); }
+  #sign-out-btn {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    transition: color .2s;
+    display: none;
+  }
+  #sign-out-btn:hover { color: var(--text); }
+
+  /* ── LANDING ── */
+  #landing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 90px);
+    gap: 16px;
+    text-align: center;
+    padding: 40px;
+  }
+  #landing .big {
+    font-family: 'DM Serif Display', serif;
+    font-size: 42px;
+    line-height: 1.1;
+    max-width: 520px;
+  }
+  #landing .big em { color: var(--accent); font-style: italic; }
+  #landing .sub {
+    color: var(--muted);
+    max-width: 380px;
+    line-height: 1.6;
+  }
+  #landing-btn {
+    margin-top: 8px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 14px 32px;
+    border-radius: var(--radius);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .2s, transform .1s;
+  }
+  #landing-btn:hover { opacity: .85; transform: translateY(-1px); }
+
+  /* ── FILTERS ── */
+  #filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 20px 40px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .filter-group label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+  }
+  .filter-group select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 30px 7px 10px;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b6b80'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    cursor: pointer;
+    min-width: 150px;
+    transition: border-color .2s;
+  }
+  .filter-group select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  #reset-btn {
+    align-self: flex-end;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: color .2s, border-color .2s;
+  }
+  #reset-btn:hover { color: var(--text); border-color: var(--text); }
+
+  /* ── DASHBOARD ── */
+  #dashboard { display: none; }
+
+  /* ── KPI ROW ── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .kpi {
+    background: var(--surface);
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .kpi-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--muted);
+  }
+  .kpi-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 38px;
+    line-height: 1;
+  }
+  .kpi-sub {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .kpi:nth-child(1) .kpi-value { color: var(--accent); }
+  .kpi:nth-child(2) .kpi-value { color: var(--accent3); }
+  .kpi:nth-child(3) .kpi-value { color: var(--accent4); }
+  .kpi:nth-child(4) .kpi-value { color: var(--accent2); }
+
+  /* ── CHART GRID ── */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .chart-grid.full { grid-template-columns: 1fr; }
+  .chart-card {
+    background: var(--surface);
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .chart-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 17px;
+  }
+  .chart-subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: -10px;
+  }
+  .chart-wrap {
+    position: relative;
+    height: 280px;
+  }
+  .chart-wrap.tall { height: 360px; }
+
+  /* ── TABLE ── */
+  .table-section {
+    padding: 32px 40px;
+  }
+  .table-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .table-header h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+  }
+  .table-header span {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .tbl-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th {
+    background: var(--surface2);
+    padding: 10px 14px;
+    text-align: left;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── LOADER ── */
+  #loader {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 90px);
+    gap: 16px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+  }
+  .spinner {
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── ERROR ── */
+  #error-msg {
+    display: none;
+    margin: 40px;
+    padding: 20px 24px;
+    background: rgba(255,107,107,.08);
+    border: 1px solid rgba(255,107,107,.3);
+    border-radius: var(--radius);
+    color: var(--accent2);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 800px) {
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+    .chart-grid { grid-template-columns: 1fr; }
+    header { padding: 16px 20px; }
+    #filters { padding: 16px 20px; }
+    .table-section { padding: 24px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header>
+  <div class="header-left">
+    <h1>LSL Workshop Attendance</h1>
+    <p>Learning Science Lab · NYU Stern</p>
+  </div>
+  <div class="header-right">
+    <div id="status-pill">not connected</div>
+    <button id="sign-in-btn" onclick="signIn()">Sign in with Google</button>
+    <button id="sign-out-btn" onclick="signOut()">Sign out</button>
+  </div>
+</header>
+
+<!-- ═══════════════ LANDING ═══════════════ -->
+<div id="landing">
+  <p class="big">Workshop insights, <em>at a glance.</em></p>
+  <p class="sub">Sign in with your NYU Google account to load attendance data directly from Sheets.</p>
+  <button id="landing-btn" onclick="signIn()">Sign in with Google</button>
+</div>
+
+<!-- ═══════════════ LOADER ═══════════════ -->
+<div id="loader">
+  <div class="spinner"></div>
+  <span>Loading attendance data…</span>
+</div>
+
+<!-- ═══════════════ ERROR ═══════════════ -->
+<div id="error-msg"></div>
+
+<!-- ═══════════════ DASHBOARD ═══════════════ -->
+<div id="dashboard">
+
+  <!-- FILTERS -->
+  <div id="filters">
+    <div class="filter-group">
+      <label>Semester</label>
+      <select id="f-semester"><option value="">All semesters</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Tag / Subject</label>
+      <select id="f-tag"><option value="">All subjects</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Type</label>
+      <select id="f-type"><option value="">All types</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Affiliation</label>
+      <select id="f-affiliation"><option value="">All affiliations</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Department</label>
+      <select id="f-dept"><option value="">All departments</option></select>
+    </div>
+    <button id="reset-btn" onclick="resetFilters()">Reset</button>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <span class="kpi-label">Total Attendees</span>
+      <span class="kpi-value" id="kpi-total">—</span>
+      <span class="kpi-sub">unique attendance records</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Events</span>
+      <span class="kpi-value" id="kpi-events">—</span>
+      <span class="kpi-sub">distinct workshops</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Avg per Event</span>
+      <span class="kpi-value" id="kpi-avg">—</span>
+      <span class="kpi-sub">attendees</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Show Rate</span>
+      <span class="kpi-value" id="kpi-show">—</span>
+      <span class="kpi-sub">of RSVPs attended</span>
+    </div>
+  </div>
+
+  <!-- ROW 1: Semester + Tag -->
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-title">Attendance by Semester</div>
+      <div class="chart-subtitle">Actual attendees only</div>
+      <div class="chart-wrap"><canvas id="chart-semester"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Attendance by Subject Tag</div>
+      <div class="chart-subtitle">Workshop topic area</div>
+      <div class="chart-wrap"><canvas id="chart-tag"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Type + Department -->
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-title">Attendance by Event Type</div>
+      <div class="chart-subtitle">Bootcamp, workshop, etc.</div>
+      <div class="chart-wrap"><canvas id="chart-type"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Attendance by Affiliation</div>
+      <div class="chart-subtitle">Faculty, staff, student…</div>
+      <div class="chart-wrap"><canvas id="chart-affiliation"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Department bar (full width) -->
+  <div class="chart-grid full">
+    <div class="chart-card">
+      <div class="chart-title">Attendance by Department</div>
+      <div class="chart-subtitle">Top departments represented</div>
+      <div class="chart-wrap tall"><canvas id="chart-dept"></canvas></div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-section">
+    <div class="table-header">
+      <h2>Workshop Breakdown</h2>
+      <span id="tbl-count">— events</span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Event</th>
+            <th>Semester</th>
+            <th>Tag</th>
+            <th>Type</th>
+            <th>Attendees</th>
+            <th>RSVPs</th>
+            <th>Show Rate</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /dashboard -->
+
+<script>
+// ═══════════════════════════════════════════════
+//  CONFIG — replace CLIENT_ID before deploying
+// ═══════════════════════════════════════════════
+const CLIENT_ID   = '278323499233-03fhs55vg775ojjcg6gr7skk0fetjrkd.apps.googleusercontent.com';
+const SHEET_ID    = '10nl1sgAj4frbUa90vV0JsD6Avq7cNbAQugmEU4iaTFk';
+const SHEET_NAME  = 'Event Attendance Log';
+const SCOPE       = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+
+// ═══════════════════════════════════════════════
+//  PALETTE
+// ═══════════════════════════════════════════════
+const COLORS = [
+  '#7b61ff','#ff6b6b','#34d399','#fbbf24',
+  '#60a5fa','#f472b6','#a78bfa','#2dd4bf',
+  '#fb923c','#e879f9','#86efac','#67e8f9'
+];
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let tokenClient;
+let accessToken  = null;
+let rawRows      = [];   // all attended rows (parsed)
+let allRsvpRows  = [];   // for show-rate calc
+let charts       = {};
+
+// ═══════════════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════════════
+window.addEventListener('load', () => {
+  // Wait for GSI to load
+  const wait = setInterval(() => {
+    if (window.google?.accounts?.oauth2) {
+      clearInterval(wait);
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPE,
+        callback: handleToken,
+      });
+    }
+  }, 100);
+});
+
+function signIn() {
+  if (!tokenClient) { showError('Google Identity library not loaded yet. Please wait a moment and try again.'); return; }
+  tokenClient.requestAccessToken({ prompt: '' });
+}
+
+function signOut() {
+  if (accessToken) google.accounts.oauth2.revoke(accessToken);
+  accessToken = null;
+  setUIState('landing');
+}
+
+function handleToken(resp) {
+  if (resp.error) { showError('Auth error: ' + resp.error); return; }
+  accessToken = resp.access_token;
+  setUIState('loading');
+  fetchSheetData();
+}
+
+// ═══════════════════════════════════════════════
+//  DATA FETCH
+// ═══════════════════════════════════════════════
+async function fetchSheetData() {
+  const range = encodeURIComponent(`'${SHEET_NAME}'`);
+  const url   = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}`;
+  try {
+    const res  = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    const json = await res.json();
+    if (json.error) { showError('Sheets API error: ' + json.error.message); return; }
+    processData(json.values || []);
+  } catch(e) {
+    showError('Network error: ' + e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  DATA PROCESSING
+// ═══════════════════════════════════════════════
+function parseSemester(dateStr) {
+  if (!dateStr) return 'Unknown';
+  // Try to parse M/D/YY or M/D/YYYY
+  const parts = dateStr.split('/');
+  if (parts.length < 3) return 'Unknown';
+  let month = parseInt(parts[0]);
+  let year  = parseInt(parts[2]);
+  if (year < 100) year += 2000;
+  if (month >= 1 && month <= 5)  return `Spring ${year}`;
+  if (month >= 6 && month <= 7)  return `Summer ${year}`;
+  if (month >= 8 && month <= 12) return `Fall ${year}`;
+  return `${year}`;
+}
+
+function processData(values) {
+  if (!values.length) { showError('No data found in the sheet.'); return; }
+
+  const headers = values[0].map(h => h.trim());
+  const idx = h => headers.indexOf(h);
+
+  const iDate    = idx('Date');
+  const iName    = idx('Event Name');
+  const iTag     = idx('Tag');
+  const iType    = idx('Type');
+  const iAffil   = idx('Affiliation');
+  const iDept    = idx('Department');
+  const iRsvp    = idx("RSVP'd");
+  const iAttend  = idx('Attended');
+
+  const parse = row => ({
+    date:      (row[iDate]   || '').trim(),
+    event:     (row[iName]   || '').trim(),
+    tag:       (row[iTag]    || '').trim(),
+    type:      (row[iType]   || '').trim(),
+    affil:     (row[iAffil]  || '').trim(),
+    dept:      (row[iDept]   || '').trim(),
+    rsvpd:     (row[iRsvp]   || '').trim().toLowerCase() === 'yes',
+    attended:  (row[iAttend] || '').trim().toLowerCase() === 'yes',
+    semester:  parseSemester((row[iDate] || '').trim()),
+  });
+
+  const dataRows = values.slice(1).map(parse).filter(r => r.event);
+  allRsvpRows    = dataRows.filter(r => r.rsvpd);
+  rawRows        = dataRows.filter(r => r.attended);
+
+  populateFilters(rawRows);
+  setUIState('dashboard');
+  renderAll(rawRows);
+}
+
+// ═══════════════════════════════════════════════
+//  FILTERS
+// ═══════════════════════════════════════════════
+function unique(arr, key) {
+  return [...new Set(arr.map(r => r[key]).filter(Boolean))].sort();
+}
+
+function populateFilters(rows) {
+  populate('f-semester',   unique(rows, 'semester'));
+  populate('f-tag',        unique(rows, 'tag'));
+  populate('f-type',       unique(rows, 'type'));
+  populate('f-affiliation',unique(rows, 'affil'));
+  populate('f-dept',       unique(rows, 'dept'));
+
+  ['f-semester','f-tag','f-type','f-affiliation','f-dept']
+    .forEach(id => document.getElementById(id).addEventListener('change', applyFilters));
+}
+
+function populate(id, values) {
+  const sel = document.getElementById(id);
+  const cur = sel.options[0].outerHTML;
+  sel.innerHTML = cur + values.map(v => `<option value="${v}">${v}</option>`).join('');
+}
+
+function getFiltered() {
+  const sem   = document.getElementById('f-semester').value;
+  const tag   = document.getElementById('f-tag').value;
+  const type  = document.getElementById('f-type').value;
+  const affil = document.getElementById('f-affiliation').value;
+  const dept  = document.getElementById('f-dept').value;
+
+  return rawRows.filter(r =>
+    (!sem   || r.semester === sem) &&
+    (!tag   || r.tag      === tag) &&
+    (!type  || r.type     === type) &&
+    (!affil || r.affil    === affil) &&
+    (!dept  || r.dept     === dept)
+  );
+}
+
+function applyFilters() { renderAll(getFiltered()); }
+
+function resetFilters() {
+  ['f-semester','f-tag','f-type','f-affiliation','f-dept']
+    .forEach(id => document.getElementById(id).value = '');
+  renderAll(rawRows);
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════
+function renderAll(rows) {
+  renderKPIs(rows);
+  renderChart('chart-semester',   countBy(rows, 'semester'),   'bar');
+  renderChart('chart-tag',        countBy(rows, 'tag'),        'doughnut');
+  renderChart('chart-type',       countBy(rows, 'type'),       'doughnut');
+  renderChart('chart-affiliation',countBy(rows, 'affil'),      'bar');
+  renderChart('chart-dept',       topN(countBy(rows, 'dept'), 20), 'bar', true);
+  renderTable(rows);
+}
+
+function countBy(rows, key) {
+  const m = {};
+  rows.forEach(r => {
+    const v = r[key] || 'Unknown';
+    m[v] = (m[v] || 0) + 1;
+  });
+  // Sort descending
+  return Object.fromEntries(Object.entries(m).sort((a,b) => b[1]-a[1]));
+}
+
+function topN(obj, n) {
+  return Object.fromEntries(Object.entries(obj).slice(0, n));
+}
+
+function renderKPIs(rows) {
+  document.getElementById('kpi-total').textContent  = rows.length.toLocaleString();
+  const events = new Set(rows.map(r => r.event + '|' + r.date));
+  document.getElementById('kpi-events').textContent = events.size;
+  document.getElementById('kpi-avg').textContent    = events.size
+    ? (rows.length / events.size).toFixed(1) : '—';
+
+  // Show rate: attended / rsvp'd (from full unfiltered set, or filtered)
+  const rsvpCount = allRsvpRows.length;
+  document.getElementById('kpi-show').textContent   = rsvpCount
+    ? Math.round((rawRows.length / rsvpCount) * 100) + '%' : '—';
+}
+
+function renderChart(id, data, type, horizontal = false) {
+  const labels = Object.keys(data);
+  const values = Object.values(data);
+  const colors = labels.map((_, i) => COLORS[i % COLORS.length]);
+
+  if (charts[id]) charts[id].destroy();
+
+  const ctx = document.getElementById(id).getContext('2d');
+
+  const isDoughnut = type === 'doughnut';
+
+  charts[id] = new Chart(ctx, {
+    type: isDoughnut ? 'doughnut' : 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: isDoughnut
+          ? colors
+          : colors.map(c => c + 'cc'),
+        borderColor: isDoughnut
+          ? colors.map(c => c + '33')
+          : colors,
+        borderWidth: isDoughnut ? 2 : 1,
+        borderRadius: isDoughnut ? 0 : 4,
+        hoverOffset: 8,
+      }]
+    },
+    options: {
+      indexAxis: horizontal ? 'y' : 'x',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: isDoughnut,
+          position: 'right',
+          labels: {
+            color: '#e8e8f0',
+            font: { family: 'DM Sans', size: 11 },
+            boxWidth: 12,
+            padding: 10,
+          }
+        },
+        tooltip: {
+          backgroundColor: '#222228',
+          borderColor: '#2e2e38',
+          borderWidth: 1,
+          titleColor: '#e8e8f0',
+          bodyColor: '#6b6b80',
+          titleFont: { family: 'DM Mono', size: 11 },
+          bodyFont:  { family: 'DM Sans', size: 13 },
+        }
+      },
+      scales: isDoughnut ? {} : {
+        x: {
+          grid:  { color: '#2e2e38', drawBorder: false },
+          ticks: { color: '#6b6b80', font: { family: 'DM Mono', size: 10 },
+                   maxRotation: horizontal ? 0 : 40 }
+        },
+        y: {
+          grid:  { color: '#2e2e38', drawBorder: false },
+          ticks: { color: '#6b6b80', font: { family: 'DM Mono', size: 10 } },
+          beginAtZero: true
+        }
+      }
+    }
+  });
+}
+
+function renderTable(rows) {
+  // Aggregate per event
+  const evMap = {};
+  rows.forEach(r => {
+    const key = r.event + '||' + r.date;
+    if (!evMap[key]) evMap[key] = { event: r.event, semester: r.semester, tag: r.tag, type: r.type, attended: 0, rsvpd: 0 };
+    evMap[key].attended++;
+  });
+  // Count RSVPs per event from full set
+  allRsvpRows.forEach(r => {
+    const key = r.event + '||' + r.date;
+    if (evMap[key]) evMap[key].rsvpd++;
+  });
+
+  const events = Object.values(evMap).sort((a,b) => b.attended - a.attended);
+  document.getElementById('tbl-count').textContent = events.length + ' events';
+
+  const typeColors = { Bootcamp:'#7b61ff', Workshop:'#34d399', Seminar:'#fbbf24', Webinar:'#60a5fa' };
+
+  document.getElementById('tbl-body').innerHTML = events.map(e => {
+    const rate  = e.rsvpd ? Math.round((e.attended / e.rsvpd) * 100) + '%' : '—';
+    const color = typeColors[e.type] || '#6b6b80';
+    return `<tr>
+      <td>${e.event}</td>
+      <td>${e.semester}</td>
+      <td>${e.tag || '—'}</td>
+      <td><span class="badge" style="background:${color}22;color:${color}">${e.type || '—'}</span></td>
+      <td><strong>${e.attended}</strong></td>
+      <td>${e.rsvpd || '—'}</td>
+      <td>${rate}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  UI STATE
+// ═══════════════════════════════════════════════
+function setUIState(state) {
+  document.getElementById('landing').style.display   = state === 'landing'  ? 'flex'  : 'none';
+  document.getElementById('loader').style.display    = state === 'loading'  ? 'flex'  : 'none';
+  document.getElementById('dashboard').style.display = state === 'dashboard'? 'block' : 'none';
+  document.getElementById('error-msg').style.display = 'none';
+
+  document.getElementById('sign-in-btn').style.display  = state === 'dashboard' ? 'none'  : 'block';
+  document.getElementById('sign-out-btn').style.display = state === 'dashboard' ? 'block' : 'none';
+
+  const pill = document.getElementById('status-pill');
+  if (state === 'dashboard') {
+    pill.textContent = 'connected';
+    pill.classList.add('connected');
+  } else {
+    pill.textContent = 'not connected';
+    pill.classList.remove('connected');
+  }
+}
+
+function showError(msg) {
+  setUIState('landing');
+  const el = document.getElementById('error-msg');
+  el.style.display = 'block';
+  el.textContent   = '⚠ ' + msg;
+}
+</script>
+</body>
+</html>
