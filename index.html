@@ -61,7 +61,7 @@
     text-underline-offset: 2px;
   }
 
-  button, select { font: inherit; }
+  button, input { font: inherit; }
 
   /* ── HEADER ── */
   header {
@@ -207,44 +207,167 @@
     max-width: var(--max-width);
     margin: 28px auto 0;
     display: flex;
-    flex-wrap: wrap;
     gap: 14px;
     padding: 24px;
     background: rgba(255, 255, 255, 0.92);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
+    align-items: flex-start;
+  }
+  .filters-list {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    gap: 14px;
   }
   .filter-group {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 6px;
     flex: 1 1 180px;
+    min-width: 180px;
   }
   .filter-group label {
     font-size: 0.82rem;
     font-weight: 700;
     color: var(--text);
   }
-  .filter-group select {
+  .filter-trigger {
     background: #fff;
     border: 2px solid var(--border);
     color: var(--text);
     padding: 11px 38px 11px 12px;
     border-radius: 12px;
     font-size: 0.94rem;
-    appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%2310998C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
     cursor: pointer;
-    min-width: 150px;
+    width: 100%;
+    text-align: left;
     transition: border-color .2s ease, box-shadow .2s ease;
+    min-height: 48px;
   }
-  .filter-group select:focus {
+  .filter-trigger:hover {
+    border-color: var(--border-strong);
+  }
+  .filter-trigger:focus-visible {
     outline: none;
     border-color: var(--teal-dark);
     box-shadow: 0 0 0 4px rgba(137, 229, 218, 0.28);
+  }
+  .filter-group.open .filter-trigger {
+    border-color: var(--teal-dark);
+    box-shadow: 0 0 0 4px rgba(137, 229, 218, 0.18);
+  }
+  .filter-trigger-text {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 10px;
+  }
+  .filter-trigger.active .filter-trigger-text {
+    color: var(--text-strong);
+    font-weight: 600;
+  }
+  .filter-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    z-index: 30;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: 0 18px 40px rgba(17, 62, 87, 0.14);
+    overflow: hidden;
+  }
+  .filter-menu[hidden] { display: none; }
+  .filter-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(238, 251, 248, 0.9), rgba(255, 255, 255, 0.96));
+  }
+  .filter-menu-title {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .filter-clear {
+    background: transparent;
+    border: none;
+    color: var(--purple-dark);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .filter-clear:disabled {
+    color: var(--muted);
+    cursor: default;
+    text-decoration: none;
+    opacity: 0.7;
+  }
+  .filter-options {
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .filter-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color .15s ease;
+  }
+  .filter-option:hover {
+    background: #f7f8fb;
+  }
+  .filter-option.is-disabled {
+    color: var(--muted);
+    opacity: 0.65;
+  }
+  .filter-option input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--teal-dark);
+    flex: 0 0 auto;
+  }
+  .filter-option-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .filter-option-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    color: inherit;
+  }
+  .filter-option-count {
+    flex: 0 0 auto;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .filter-empty {
+    padding: 14px 12px;
+    font-size: 0.88rem;
+    color: var(--muted);
   }
   #reset-btn {
     align-self: flex-end;
@@ -460,7 +583,9 @@
     #filters {
       margin: 20px 20px 0;
       padding: 18px;
+      flex-direction: column;
     }
+    .filters-list { width: 100%; }
     .kpi-row,
     .chart-grid,
     .table-section {
@@ -522,26 +647,7 @@
 
   <!-- FILTERS -->
   <div id="filters">
-    <div class="filter-group">
-      <label>Semester</label>
-      <select id="f-semester"><option value="">All semesters</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Tag / subject</label>
-      <select id="f-tag"><option value="">All subjects</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Type</label>
-      <select id="f-type"><option value="">All types</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Affiliation</label>
-      <select id="f-affiliation"><option value="">All affiliations</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Department</label>
-      <select id="f-dept"><option value="">All departments</option></select>
-    </div>
+    <div id="filters-list" class="filters-list"></div>
     <button id="reset-btn" onclick="resetFilters()">Reset</button>
   </div>
 
@@ -657,6 +763,17 @@ let accessToken  = null;
 let rawRows      = [];   // all attended rows (parsed)
 let allRsvpRows  = [];   // for show-rate calc
 let charts       = {};
+let filterOptions = {};
+let filtersState  = {};
+let openFilterId  = null;
+
+const FILTER_CONFIGS = [
+  { id: 'f-semester', label: 'Semester', key: 'semester', allLabel: 'All semesters', emptyLabel: 'No semesters available' },
+  { id: 'f-tag', label: 'Tag / subject', key: 'tag', allLabel: 'All subjects', emptyLabel: 'No subjects available' },
+  { id: 'f-type', label: 'Type', key: 'type', allLabel: 'All types', emptyLabel: 'No event types available' },
+  { id: 'f-affiliation', label: 'Affiliation', key: 'affil', allLabel: 'All affiliations', emptyLabel: 'No affiliations available' },
+  { id: 'f-dept', label: 'Department', key: 'dept', allLabel: 'All departments', emptyLabel: 'No departments available' }
+];
 
 // ═══════════════════════════════════════════════
 //  AUTH
@@ -757,7 +874,7 @@ function processData(values) {
   allRsvpRows    = dataRows.filter(r => r.rsvpd);
   rawRows        = dataRows.filter(r => r.attended);
 
-  populateFilters(rawRows);
+  initializeFilters(rawRows);
   setUIState('dashboard');
   renderAll(rawRows);
 }
@@ -769,45 +886,174 @@ function unique(arr, key) {
   return [...new Set(arr.map(r => r[key]).filter(Boolean))].sort();
 }
 
-function populateFilters(rows) {
-  populate('f-semester',   unique(rows, 'semester'));
-  populate('f-tag',        unique(rows, 'tag'));
-  populate('f-type',       unique(rows, 'type'));
-  populate('f-affiliation',unique(rows, 'affil'));
-  populate('f-dept',       unique(rows, 'dept'));
+function initializeFilters(rows) {
+  filterOptions = Object.fromEntries(
+    FILTER_CONFIGS.map(config => [config.id, unique(rows, config.key)])
+  );
+  filtersState = Object.fromEntries(
+    FILTER_CONFIGS.map(config => [config.id, new Set()])
+  );
 
-  ['f-semester','f-tag','f-type','f-affiliation','f-dept']
-    .forEach(id => document.getElementById(id).addEventListener('change', applyFilters));
+  renderFilterControls();
+  attachFilterEvents();
 }
 
-function populate(id, values) {
-  const sel = document.getElementById(id);
-  const cur = sel.options[0].outerHTML;
-  sel.innerHTML = cur + values.map(v => `<option value="${v}">${v}</option>`).join('');
+function renderFilterControls() {
+  const container = document.getElementById('filters-list');
+  container.innerHTML = FILTER_CONFIGS.map(config => {
+    const summary = getFilterSummary(config.id);
+    const active = filtersState[config.id]?.size ? 'active' : '';
+    const open = openFilterId === config.id ? 'open' : '';
+    return `<div class="filter-group ${open}" data-filter-id="${config.id}">
+      <label for="${config.id}-trigger">${config.label}</label>
+      <button
+        type="button"
+        class="filter-trigger ${active}"
+        id="${config.id}-trigger"
+        aria-haspopup="true"
+        aria-expanded="${openFilterId === config.id ? 'true' : 'false'}"
+        aria-controls="${config.id}-menu"
+      >
+        <span class="filter-trigger-text">${escapeHtml(summary)}</span>
+      </button>
+      <div class="filter-menu" id="${config.id}-menu" ${openFilterId === config.id ? '' : 'hidden'}>
+        <div class="filter-menu-header">
+          <span class="filter-menu-title">${escapeHtml(config.label)}</span>
+          <button type="button" class="filter-clear" data-clear-filter="${config.id}" ${filtersState[config.id].size ? '' : 'disabled'}>Clear</button>
+        </div>
+        <div class="filter-options">
+          ${renderFilterOptions(config)}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderFilterOptions(config) {
+  const options = filterOptions[config.id] || [];
+  if (!options.length) return `<div class="filter-empty">${escapeHtml(config.emptyLabel)}</div>`;
+
+  const counts = getOptionCounts(config.id);
+  return options.map(option => {
+    const isSelected = filtersState[config.id].has(option);
+    const count = counts[option] || 0;
+    const isUnavailable = count === 0 && !isSelected;
+    return `<label class="filter-option ${isUnavailable ? 'is-disabled' : ''}">
+      <input
+        type="checkbox"
+        data-filter-id="${config.id}"
+        value="${escapeAttribute(option)}"
+        ${isSelected ? 'checked' : ''}
+        ${isUnavailable ? 'disabled' : ''}
+      />
+      <span class="filter-option-text">
+        <span class="filter-option-label">${escapeHtml(option)}</span>
+        <span class="filter-option-count">${count}</span>
+      </span>
+    </label>`;
+  }).join('');
+}
+
+function attachFilterEvents() {
+  FILTER_CONFIGS.forEach(config => {
+    const trigger = document.getElementById(`${config.id}-trigger`);
+    const menu = document.getElementById(`${config.id}-menu`);
+
+    trigger.addEventListener('click', event => {
+      event.stopPropagation();
+      toggleFilterMenu(config.id);
+    });
+
+    menu.addEventListener('click', event => {
+      event.stopPropagation();
+    });
+  });
+
+  document.querySelectorAll('[data-clear-filter]').forEach(button => {
+    button.addEventListener('click', event => {
+      const id = event.currentTarget.dataset.clearFilter;
+      clearFilter(id);
+    });
+  });
+
+  document.querySelectorAll('.filter-options input[type="checkbox"]').forEach(input => {
+    input.addEventListener('change', event => {
+      updateFilterSelection(event.currentTarget.dataset.filterId, event.currentTarget.value, event.currentTarget.checked);
+    });
+  });
+}
+
+function getFilterSummary(filterId) {
+  const config = FILTER_CONFIGS.find(item => item.id === filterId);
+  const selected = [...filtersState[filterId]];
+  if (!selected.length) return config.allLabel;
+  if (selected.length <= 2) {
+    const joined = selected.join(', ');
+    if (joined.length <= 28) return joined;
+  }
+  return `${selected.length} selected`;
+}
+
+function getRowsMatchingFilters(excludeId = null) {
+  return rawRows.filter(row => FILTER_CONFIGS.every(config => {
+    if (config.id === excludeId) return true;
+    const selected = filtersState[config.id];
+    if (!selected || selected.size === 0) return true;
+    return selected.has(row[config.key] || '');
+  }));
+}
+
+function getOptionCounts(filterId) {
+  const config = FILTER_CONFIGS.find(item => item.id === filterId);
+  const counts = {};
+  getRowsMatchingFilters(filterId).forEach(row => {
+    const value = row[config.key] || '';
+    if (!value) return;
+    counts[value] = (counts[value] || 0) + 1;
+  });
+  return counts;
 }
 
 function getFiltered() {
-  const sem   = document.getElementById('f-semester').value;
-  const tag   = document.getElementById('f-tag').value;
-  const type  = document.getElementById('f-type').value;
-  const affil = document.getElementById('f-affiliation').value;
-  const dept  = document.getElementById('f-dept').value;
-
-  return rawRows.filter(r =>
-    (!sem   || r.semester === sem) &&
-    (!tag   || r.tag      === tag) &&
-    (!type  || r.type     === type) &&
-    (!affil || r.affil    === affil) &&
-    (!dept  || r.dept     === dept)
-  );
+  return getRowsMatchingFilters();
 }
 
-function applyFilters() { renderAll(getFiltered()); }
+function applyFilters() {
+  renderFilterControls();
+  attachFilterEvents();
+  renderAll(getFiltered());
+}
+
+function updateFilterSelection(filterId, value, checked) {
+  if (!filtersState[filterId]) return;
+  if (checked) filtersState[filterId].add(value);
+  else filtersState[filterId].delete(value);
+  applyFilters();
+}
+
+function toggleFilterMenu(filterId) {
+  openFilterId = openFilterId === filterId ? null : filterId;
+  renderFilterControls();
+  attachFilterEvents();
+}
+
+function closeFilterMenu() {
+  if (!openFilterId) return;
+  openFilterId = null;
+  renderFilterControls();
+  attachFilterEvents();
+}
+
+function clearFilter(filterId) {
+  if (!filtersState[filterId]) return;
+  filtersState[filterId].clear();
+  applyFilters();
+}
 
 function resetFilters() {
-  ['f-semester','f-tag','f-type','f-affiliation','f-dept']
-    .forEach(id => document.getElementById(id).value = '');
-  renderAll(rawRows);
+  FILTER_CONFIGS.forEach(config => filtersState[config.id].clear());
+  openFilterId = null;
+  applyFilters();
 }
 
 // ═══════════════════════════════════════════════
@@ -985,6 +1231,27 @@ function showError(msg) {
   const el = document.getElementById('error-msg');
   el.style.display = 'block';
   el.textContent   = 'Notice: ' + msg;
+}
+
+document.addEventListener('click', event => {
+  if (!event.target.closest('.filter-group')) closeFilterMenu();
+});
+
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') closeFilterMenu();
+});
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value);
 }
 </script>
 </body>
