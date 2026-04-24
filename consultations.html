@@ -457,7 +457,7 @@
     height: 280px;
   }
   .chart-wrap.tall { height: 360px; }
-  .chart-wrap.timeline { height: 420px; }
+  .chart-wrap.timeline { height: 460px; }
 
   .table-section {
     max-width: var(--max-width);
@@ -603,7 +603,7 @@
     .kpi {
       padding: 22px 18px;
     }
-    .chart-wrap.timeline { height: 360px; }
+    .chart-wrap.timeline { height: 390px; }
   }
 </style>
 </head>
@@ -1297,15 +1297,16 @@ function renderMonthlyChart(rows) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 30 } },
+      layout: { padding: { top: 42, bottom: 8 } },
       plugins: {
         legend: {
-          position: 'top',
+          position: 'bottom',
+          align: 'center',
           labels: {
             color: '#333333',
             font: { family: 'Montserrat', size: 12 },
             boxWidth: 12,
-            padding: 16,
+            padding: 18,
           }
         },
         tooltip: {
@@ -1349,40 +1350,91 @@ function renderMonthlyChart(rows) {
 }
 
 function semesterBandsPlugin(semesters) {
+  const bandFill = ['rgba(24, 156, 205, 0.045)', 'rgba(16, 153, 140, 0.028)'];
+
   return {
     id: 'semesterBands',
+    beforeDraw(chart) {
+      drawSemesterBands(chart, semesters, ({ ctx, chartArea, left, right, index }) => {
+        ctx.fillStyle = bandFill[index % bandFill.length];
+        ctx.fillRect(left, chartArea.top, right - left, chartArea.bottom - chartArea.top);
+      });
+    },
     afterDraw(chart) {
-      if (!semesters.length) return;
-      const { ctx, chartArea, scales } = chart;
-      const x = scales.x;
-      if (!x) return;
+      drawSemesterBands(chart, semesters, ({ ctx, chartArea, left, right, label, isLast }) => {
+        const labelBandTop = chartArea.top - 34;
+        const labelBandBottom = chartArea.top - 4;
+        const width = right - left;
+        ctx.font = '700 11px Montserrat, Arial, sans-serif';
+        const fittedLabel = getSemesterBandLabel(ctx, label, width - 12);
 
-      ctx.save();
-      ctx.font = '700 11px Montserrat, Arial, sans-serif';
-      ctx.fillStyle = '#666666';
-      ctx.strokeStyle = '#dce0e9';
-      ctx.lineWidth = 1;
-      ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
+        ctx.fillRect(left, labelBandTop, width, labelBandBottom - labelBandTop);
 
-      let start = 0;
-      for (let i = 1; i <= semesters.length; i++) {
-        if (i === semesters.length || semesters[i] !== semesters[start]) {
-          const left = start === 0 ? chartArea.left : midpoint(x.getPixelForTick(start - 1), x.getPixelForTick(start));
-          const right = i === semesters.length ? chartArea.right : midpoint(x.getPixelForTick(i - 1), x.getPixelForTick(i));
-          const center = midpoint(left, right);
-          ctx.fillText(semesters[start], center, chartArea.top - 12);
-          if (i < semesters.length) {
-            ctx.beginPath();
-            ctx.moveTo(right, chartArea.top - 2);
-            ctx.lineTo(right, chartArea.bottom);
-            ctx.stroke();
-          }
-          start = i;
+        ctx.strokeStyle = '#cfd8e5';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(left, labelBandTop);
+        ctx.lineTo(left, chartArea.bottom);
+        ctx.stroke();
+
+        if (isLast) {
+          ctx.beginPath();
+          ctx.moveTo(right, labelBandTop);
+          ctx.lineTo(right, chartArea.bottom);
+          ctx.stroke();
         }
-      }
-      ctx.restore();
+
+        if (fittedLabel) {
+          ctx.fillStyle = '#4f5561';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(fittedLabel, midpoint(left, right), labelBandTop + 14);
+        }
+      });
     }
   };
+}
+
+function drawSemesterBands(chart, semesters, draw) {
+  if (!semesters.length) return;
+  const { ctx, chartArea, scales } = chart;
+  const x = scales.x;
+  if (!x) return;
+
+  ctx.save();
+  let start = 0;
+  let bandIndex = 0;
+  for (let i = 1; i <= semesters.length; i++) {
+    if (i === semesters.length || semesters[i] !== semesters[start]) {
+      const left = start === 0 ? chartArea.left : midpoint(x.getPixelForTick(start - 1), x.getPixelForTick(start));
+      const right = i === semesters.length ? chartArea.right : midpoint(x.getPixelForTick(i - 1), x.getPixelForTick(i));
+      draw({
+        ctx,
+        chartArea,
+        left,
+        right,
+        label: semesters[start],
+        index: bandIndex,
+        isLast: i === semesters.length
+      });
+      bandIndex++;
+      start = i;
+    }
+  }
+  ctx.restore();
+}
+
+function getSemesterBandLabel(ctx, label, maxWidth) {
+  if (maxWidth < 34) return '';
+  if (ctx.measureText(label).width <= maxWidth) return label;
+
+  const compact = label
+    .replace(/^Spring /, 'Sp ')
+    .replace(/^Summer /, 'Su ')
+    .replace(/^Fall /, 'Fa ');
+  if (ctx.measureText(compact).width <= maxWidth) return compact;
+  return maxWidth >= 44 ? compact.replace(/\s+20/, ' ') : '';
 }
 
 function midpoint(a, b) {
