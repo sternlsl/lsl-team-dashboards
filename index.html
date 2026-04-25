@@ -3,80 +3,58 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>LSL workshop attendance dashboard</title>
+<title>LSL dashboards</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Lato:wght@700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<script src="https://accounts.google.com/gsi/client" async></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <style>
   :root {
     --bg: #f7f8fb;
     --surface: #ffffff;
-    --surface-alt: #eefbf8;
     --surface-blue: #eef7fc;
     --border: #dce0e9;
-    --border-strong: #bfd7dd;
     --text: #333333;
     --text-strong: #000000;
     --muted: #666666;
-    --teal-light: #89e5da;
     --teal: #00b5a8;
     --teal-dark: #10998c;
-    --blue-light: #71cce1;
     --blue: #41b0e7;
     --blue-dark: #189ccd;
-    --purple-light: #8788c1;
     --purple: #6c6cb4;
     --purple-dark: #525299;
     --shadow: 0 14px 38px rgba(16, 153, 140, 0.08);
     --radius: 18px;
-    --radius-sm: 12px;
-    --max-width: 1280px;
-
-    --palette: #10998c, #41b0e7, #6c6cb4, #00b5a8, #189ccd, #525299, #89e5da, #71cce1;
+    --max-width: 1120px;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    background: var(--bg);
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(113, 204, 225, 0.22), transparent 34%),
+      radial-gradient(circle at top right, rgba(137, 229, 218, 0.24), transparent 30%),
+      linear-gradient(180deg, #f9fcfd 0%, var(--bg) 34%, var(--bg) 100%);
     color: var(--text);
     font-family: 'Montserrat', Arial, sans-serif;
     font-size: 14px;
     line-height: 1.5;
-    min-height: 100vh;
-    background-image:
-      radial-gradient(circle at top left, rgba(113, 204, 225, 0.22), transparent 34%),
-      radial-gradient(circle at top right, rgba(137, 229, 218, 0.24), transparent 30%),
-      linear-gradient(180deg, #f9fcfd 0%, #f7f8fb 28%, #f7f8fb 100%);
   }
 
-  a {
-    color: var(--teal-dark);
-    text-decoration: underline;
-    text-decoration-thickness: 1.5px;
-    text-underline-offset: 2px;
-  }
+  a { color: inherit; }
 
-  button, input { font: inherit; }
-
-  /* ── HEADER ── */
   header {
     padding: 24px 32px 20px;
     border-bottom: 1px solid rgba(220, 224, 233, 0.92);
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 16px;
     position: sticky;
     top: 0;
     background: rgba(247, 248, 251, 0.94);
     backdrop-filter: blur(14px);
-    z-index: 100;
+    z-index: 10;
   }
+
   header::after {
     content: '';
     position: absolute;
@@ -87,1181 +65,229 @@
     border-radius: 999px;
     background: linear-gradient(90deg, var(--teal) 0%, var(--blue) 50%, var(--purple) 100%);
   }
-  .header-left h1 {
+
+  .header-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+  }
+
+  h1 {
     font-family: 'Lato', Arial, sans-serif;
     font-size: 1.9rem;
     line-height: 1.1;
     color: var(--text-strong);
   }
-  .header-left p {
+
+  header p {
     margin-top: 6px;
     color: var(--muted);
     font-size: 0.95rem;
   }
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-  #status-pill {
-    font-size: 0.8rem;
-    font-weight: 700;
-    padding: 7px 14px;
-    border-radius: 99px;
-    border: 2px solid var(--border);
-    color: var(--muted);
-    background: rgba(255, 255, 255, 0.78);
-    transition: all .25s ease;
-  }
-  #status-pill.connected {
-    border-color: rgba(16, 153, 140, 0.28);
-    color: var(--teal-dark);
-    background: rgba(137, 229, 218, 0.28);
-  }
-  #sign-in-btn,
-  #landing-btn {
-    background: linear-gradient(135deg, var(--teal-dark), var(--blue-dark));
-    color: #fff;
-    border: none;
-    padding: 11px 22px;
-    border-radius: 999px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
-    box-shadow: 0 10px 22px rgba(24, 156, 205, 0.2);
-  }
-  #sign-in-btn:hover,
-  #landing-btn:hover {
-    opacity: 0.96;
-    transform: translateY(-1px);
-    box-shadow: 0 14px 26px rgba(24, 156, 205, 0.24);
-  }
-  #sign-in-btn:active,
-  #landing-btn:active { transform: translateY(0); }
-  #sign-out-btn {
-    background: #fff;
-    color: var(--purple-dark);
-    border: 2px solid rgba(108, 108, 180, 0.22);
-    padding: 10px 16px;
-    border-radius: 999px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color .2s ease, border-color .2s ease;
-    display: none;
-  }
-  #sign-out-btn:hover {
-    background: rgba(135, 136, 193, 0.08);
-    border-color: rgba(108, 108, 180, 0.4);
+
+  main {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 56px 32px 72px;
   }
 
-  /* ── LANDING ── */
-  #landing {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: calc(100vh - 102px);
-    gap: 18px;
-    text-align: center;
-    padding: 56px 24px 64px;
-    position: relative;
+  .intro {
+    max-width: 760px;
+    margin-bottom: 28px;
   }
-  #landing::before {
-    content: '';
-    width: min(100%, 980px);
-    position: absolute;
-    height: 0;
-  }
-  #landing > * {
-    position: relative;
-    z-index: 1;
-  }
-  #landing .big {
+
+  .intro h2 {
     font-family: 'Lato', Arial, sans-serif;
-    font-size: clamp(2.4rem, 5vw, 4.25rem);
-    line-height: 1.04;
-    max-width: 780px;
+    font-size: clamp(2rem, 4vw, 3.4rem);
+    line-height: 1.08;
     color: var(--text-strong);
   }
-  #landing .big em {
-    color: var(--purple-dark);
-    font-style: normal;
-  }
-  #landing .sub {
+
+  .intro p {
+    margin-top: 14px;
     color: var(--muted);
-    max-width: 620px;
-    font-size: 1.02rem;
+    font-size: 1rem;
     line-height: 1.75;
   }
-  #landing-btn {
-    margin-top: 10px;
-    padding-inline: 32px;
-  }
 
-  /* ── FILTERS ── */
-  #filters {
-    max-width: var(--max-width);
-    margin: 28px auto 0;
-    display: flex;
-    gap: 14px;
-    padding: 24px;
-    background: rgba(255, 255, 255, 0.92);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    align-items: flex-start;
-  }
-  .filters-list {
-    display: flex;
-    flex: 1;
-    flex-wrap: wrap;
-    gap: 14px;
-  }
-  .filter-group {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    flex: 1 1 180px;
-    min-width: 180px;
-  }
-  .filter-group label {
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: var(--text);
-  }
-  .filter-trigger {
-    background: #fff;
-    border: 2px solid var(--border);
-    color: var(--text);
-    padding: 11px 38px 11px 12px;
-    border-radius: 12px;
-    font-size: 0.94rem;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%2310998C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    cursor: pointer;
-    width: 100%;
-    text-align: left;
-    transition: border-color .2s ease, box-shadow .2s ease;
-    min-height: 48px;
-  }
-  .filter-trigger:hover {
-    border-color: var(--border-strong);
-  }
-  .filter-trigger:focus-visible {
-    outline: none;
-    border-color: var(--teal-dark);
-    box-shadow: 0 0 0 4px rgba(137, 229, 218, 0.28);
-  }
-  .filter-group.open .filter-trigger {
-    border-color: var(--teal-dark);
-    box-shadow: 0 0 0 4px rgba(137, 229, 218, 0.18);
-  }
-  .filter-trigger-text {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding-right: 10px;
-  }
-  .filter-trigger.active .filter-trigger-text {
-    color: var(--text-strong);
-    font-weight: 600;
-  }
-  .filter-menu {
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 0;
-    right: 0;
-    z-index: 30;
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    box-shadow: 0 18px 40px rgba(17, 62, 87, 0.14);
-    overflow: hidden;
-  }
-  .filter-menu[hidden] { display: none; }
-  .filter-menu-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--border);
-    background: linear-gradient(180deg, rgba(238, 251, 248, 0.9), rgba(255, 255, 255, 0.96));
-  }
-  .filter-menu-title {
-    font-size: 0.86rem;
-    font-weight: 700;
-    color: var(--text);
-  }
-  .filter-clear {
-    background: transparent;
-    border: none;
-    color: var(--purple-dark);
-    font-size: 0.82rem;
-    font-weight: 700;
-    cursor: pointer;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-  .filter-clear:disabled {
-    color: var(--muted);
-    cursor: default;
-    text-decoration: none;
-    opacity: 0.7;
-  }
-  .filter-options {
-    max-height: 280px;
-    overflow-y: auto;
-    padding: 8px;
-  }
-  .filter-option {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 9px 10px;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: background-color .15s ease;
-  }
-  .filter-option:hover {
-    background: #f7f8fb;
-  }
-  .filter-option.is-disabled {
-    color: var(--muted);
-    opacity: 0.65;
-  }
-  .filter-option input {
-    width: 16px;
-    height: 16px;
-    accent-color: var(--teal-dark);
-    flex: 0 0 auto;
-  }
-  .filter-option-text {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .filter-option-label {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 0.9rem;
-    color: inherit;
-  }
-  .filter-option-count {
-    flex: 0 0 auto;
-    font-size: 0.8rem;
-    color: var(--muted);
-  }
-  .filter-empty {
-    padding: 14px 12px;
-    font-size: 0.88rem;
-    color: var(--muted);
-  }
-  #reset-btn {
-    align-self: flex-end;
-    background: rgba(82, 82, 153, 0.08);
-    border: 2px solid rgba(82, 82, 153, 0.14);
-    color: var(--purple-dark);
-    padding: 11px 18px;
-    border-radius: 12px;
-    font-size: 0.92rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background-color .2s ease, border-color .2s ease;
-  }
-  #reset-btn:hover {
-    background: rgba(82, 82, 153, 0.12);
-    border-color: rgba(82, 82, 153, 0.22);
-  }
-
-  /* ── DASHBOARD ── */
-  #dashboard { display: none; }
-
-  /* ── KPI ROW ── */
-  .kpi-row {
-    max-width: var(--max-width);
-    margin: 24px auto 0;
+  .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 18px;
-  }
-  .kpi {
-    background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.92) 100%);
-    padding: 26px 24px;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-height: 158px;
-  }
-  .kpi-label {
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: var(--muted);
-  }
-  .kpi-value {
-    font-family: 'Lato', Arial, sans-serif;
-    font-size: clamp(2rem, 4vw, 3rem);
-    line-height: 1.05;
-    color: var(--text-strong);
-  }
-  .kpi-sub {
-    font-size: 0.9rem;
-    color: var(--muted);
-  }
-  .kpi:nth-child(1) { background: linear-gradient(180deg, rgba(137, 229, 218, 0.26), rgba(255,255,255,0.98)); }
-  .kpi:nth-child(2) { background: linear-gradient(180deg, rgba(113, 204, 225, 0.24), rgba(255,255,255,0.98)); }
-  .kpi:nth-child(3) { background: linear-gradient(180deg, rgba(135, 136, 193, 0.2), rgba(255,255,255,0.98)); }
-  .kpi:nth-child(4) { background: linear-gradient(180deg, rgba(0, 181, 168, 0.18), rgba(255,255,255,0.98)); }
-  .kpi:nth-child(1) .kpi-value { color: var(--teal-dark); }
-  .kpi:nth-child(2) .kpi-value { color: var(--blue-dark); }
-  .kpi:nth-child(3) .kpi-value { color: var(--purple-dark); }
-  .kpi:nth-child(4) .kpi-value { color: var(--teal); }
-
-  /* ── CHART GRID ── */
-  .chart-grid {
-    max-width: var(--max-width);
-    margin: 24px auto 0;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 20px;
   }
-  .chart-grid.full { grid-template-columns: 1fr; }
-  .chart-card {
+
+  .dashboard-card {
+    min-height: 260px;
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: 22px;
+    padding: 24px;
     background: rgba(255, 255, 255, 0.94);
-    padding: 28px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    text-decoration: none;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
   }
-  .chart-title {
-    font-family: 'Lato', Arial, sans-serif;
-    font-size: 1.22rem;
-    color: var(--text-strong);
-  }
-  .chart-subtitle {
-    font-size: 0.92rem;
-    color: var(--muted);
-    margin-top: -8px;
-  }
-  .chart-wrap {
-    position: relative;
-    height: 280px;
-  }
-  .chart-wrap.tall { height: 360px; }
 
-  /* ── TABLE ── */
-  .table-section {
-    max-width: var(--max-width);
-    margin: 24px auto 40px;
-    padding: 0;
+  .dashboard-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(16, 153, 140, 0.32);
+    box-shadow: 0 18px 42px rgba(16, 153, 140, 0.12);
   }
-  .table-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 16px;
+
+  .card-top {
+    display: grid;
+    grid-template-columns: 1fr 150px;
+    gap: 18px;
+    align-items: start;
   }
-  .table-header h2 {
+
+  .card-title {
     font-family: 'Lato', Arial, sans-serif;
-    font-size: 1.5rem;
+    font-size: 1.45rem;
     color: var(--text-strong);
   }
-  .table-header span {
+
+  .card-copy {
+    margin-top: 8px;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  .card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    color: var(--purple-dark);
     font-size: 0.9rem;
     font-weight: 700;
-    color: var(--muted);
   }
-  .tbl-wrap {
-    overflow-x: auto;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.96);
-    box-shadow: var(--shadow);
-  }
-  .workshop-table-wrap {
-    max-height: 560px;
-    overflow: auto;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.95rem;
-  }
-  th {
-    background: var(--surface-blue);
-    padding: 14px 16px;
-    text-align: left;
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--text);
-    border-bottom: 2px solid var(--border);
+
+  .card-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(82, 82, 153, 0.08);
+    color: var(--purple-dark);
+    font-size: 0.82rem;
     white-space: nowrap;
   }
-  .workshop-table-wrap th {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-  }
-  td {
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text);
-    vertical-align: top;
-  }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #fbfdfe; }
-  .badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 99px;
-    font-size: 0.82rem;
-    font-weight: 700;
+
+  .preview {
+    height: 132px;
+    padding: 12px;
+    border: 1px solid rgba(220, 224, 233, 0.9);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(238, 247, 252, 0.9), rgba(255, 255, 255, 0.96));
+    display: grid;
+    grid-template-rows: 18px 1fr 18px;
+    gap: 10px;
   }
 
-  /* ── LOADER ── */
-  #loader {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: calc(100vh - 90px);
-    gap: 16px;
-    color: var(--muted);
-    font-size: 0.95rem;
-  }
-  .spinner {
-    width: 36px;
-    height: 36px;
-    border: 4px solid rgba(220, 224, 233, 0.8);
-    border-top-color: var(--teal-dark);
-    border-radius: 50%;
-    animation: spin .8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* ── ERROR ── */
-  #error-msg {
-    display: none;
-    max-width: min(var(--max-width), calc(100% - 48px));
-    margin: 24px auto 0;
-    padding: 18px 20px;
-    background: rgba(82, 82, 153, 0.08);
-    border: 2px solid rgba(82, 82, 153, 0.18);
-    border-radius: var(--radius-sm);
-    color: var(--purple-dark);
-    font-size: 0.95rem;
-    font-weight: 600;
-    line-height: 1.6;
+  .preview-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
   }
 
-  @media (max-width: 980px) {
-    .kpi-row { grid-template-columns: 1fr 1fr; }
-    .chart-grid { grid-template-columns: 1fr; }
+  .preview-kpis span,
+  .preview-footer span {
+    border-radius: 6px;
+    background: rgba(16, 153, 140, 0.18);
   }
 
-  @media (max-width: 800px) {
-    header {
-      padding: 18px 20px 16px;
-      align-items: flex-start;
-      flex-direction: column;
-    }
-    header::after {
-      left: 20px;
-      right: 20px;
-    }
-    .header-right { width: 100%; justify-content: flex-start; }
-    #filters {
-      margin: 20px 20px 0;
-      padding: 18px;
-      flex-direction: column;
-    }
-    .filters-list { width: 100%; }
-    .kpi-row,
-    .chart-grid,
-    .table-section {
-      margin-left: 20px;
-      margin-right: 20px;
-    }
-    .table-header {
-      flex-direction: column;
-      align-items: flex-start;
-    }
+  .preview-bars {
+    display: flex;
+    align-items: end;
+    gap: 7px;
+    padding-top: 4px;
+  }
+
+  .preview-bars span {
+    flex: 1;
+    min-height: 22px;
+    border-radius: 6px 6px 2px 2px;
+    background: var(--teal-dark);
+  }
+
+  .preview-bars span:nth-child(2),
+  .preview-bars span:nth-child(5) { background: var(--blue-dark); }
+  .preview-bars span:nth-child(3),
+  .preview-bars span:nth-child(6) { background: var(--purple); }
+
+  .preview-footer {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  @media (max-width: 820px) {
+    header { padding: 20px 22px 18px; }
+    header::after { left: 22px; right: 22px; }
+    main { padding: 42px 20px 56px; }
+    .dashboard-grid { grid-template-columns: 1fr; }
   }
 
   @media (max-width: 560px) {
-    .kpi-row { grid-template-columns: 1fr; }
-    #landing {
-      padding: 40px 20px 56px;
-      min-height: calc(100vh - 120px);
-    }
-    .chart-card,
-    .kpi {
-      padding: 22px 18px;
-    }
+    .card-top { grid-template-columns: 1fr; }
+    .preview { height: 120px; }
   }
 </style>
 </head>
 <body>
-
-<!-- ═══════════════ HEADER ═══════════════ -->
 <header>
-  <div class="header-left">
-    <h1>LSL workshop attendance</h1>
-    <p>Learning Science Lab · NYU Stern</p>
-  </div>
-  <div class="header-right">
-    <div id="status-pill">not connected</div>
-    <button id="sign-in-btn" onclick="signIn()">Sign in with Google</button>
-    <button id="sign-out-btn" onclick="signOut()">Sign out</button>
+  <div class="header-inner">
+    <h1>LSL dashboards</h1>
+    <p>Learning Science Lab | NYU Stern</p>
   </div>
 </header>
 
-<!-- ═══════════════ LANDING ═══════════════ -->
-<div id="landing">
-  <p class="big">Workshop attendance insights for the <em>Learning Science Lab</em>.</p>
-  <p class="sub">Sign in with your NYU Google account to review workshop reach, participation patterns, and event-level attendance data drawn directly from Google Sheets.</p>
-  <button id="landing-btn" onclick="signIn()">Sign in with Google</button>
-</div>
+<main>
+  <section class="intro" aria-labelledby="page-title">
+    <h2 id="page-title">Dashboard home</h2>
+    <p>Choose a dashboard to review Learning Science Lab activity from the connected Google Sheets logs.</p>
+  </section>
 
-<!-- ═══════════════ LOADER ═══════════════ -->
-<div id="loader">
-  <div class="spinner"></div>
-  <span>Loading attendance data…</span>
-</div>
-
-<!-- ═══════════════ ERROR ═══════════════ -->
-<div id="error-msg"></div>
-
-<!-- ═══════════════ DASHBOARD ═══════════════ -->
-<div id="dashboard">
-
-  <!-- FILTERS -->
-  <div id="filters">
-    <div id="filters-list" class="filters-list"></div>
-    <button id="reset-btn" onclick="resetFilters()">Reset</button>
-  </div>
-
-  <!-- KPIs -->
-  <div class="kpi-row">
-    <div class="kpi">
-      <span class="kpi-label">Total attendees</span>
-      <span class="kpi-value" id="kpi-total">—</span>
-      <span class="kpi-sub">unique attendance records</span>
-    </div>
-    <div class="kpi">
-      <span class="kpi-label">Events</span>
-      <span class="kpi-value" id="kpi-events">—</span>
-      <span class="kpi-sub">distinct workshops</span>
-    </div>
-    <div class="kpi">
-      <span class="kpi-label">Average per event</span>
-      <span class="kpi-value" id="kpi-avg">—</span>
-      <span class="kpi-sub">attendees</span>
-    </div>
-    <div class="kpi">
-      <span class="kpi-label">Show rate</span>
-      <span class="kpi-value" id="kpi-show">—</span>
-      <span class="kpi-sub">of RSVPs attended</span>
-    </div>
-  </div>
-
-  <!-- ROW 1: Semester + Tag -->
-  <div class="chart-grid">
-    <div class="chart-card">
-      <div class="chart-title">Attendance by semester</div>
-      <div class="chart-subtitle">Actual attendees only</div>
-      <div class="chart-wrap"><canvas id="chart-semester"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">Attendance by subject tag</div>
-      <div class="chart-subtitle">Workshop topic area</div>
-      <div class="chart-wrap"><canvas id="chart-tag"></canvas></div>
-    </div>
-  </div>
-
-  <!-- ROW 2: Type + Department -->
-  <div class="chart-grid">
-    <div class="chart-card">
-      <div class="chart-title">Attendance by event type</div>
-      <div class="chart-subtitle">Bootcamp, workshop, etc.</div>
-      <div class="chart-wrap"><canvas id="chart-type"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">Attendance by affiliation</div>
-      <div class="chart-subtitle">Faculty, staff, student…</div>
-      <div class="chart-wrap"><canvas id="chart-affiliation"></canvas></div>
-    </div>
-  </div>
-
-  <!-- ROW 3: Department bar (full width) -->
-  <div class="chart-grid full">
-    <div class="chart-card">
-      <div class="chart-title">Attendance by department</div>
-      <div class="chart-subtitle">Top departments represented</div>
-      <div class="chart-wrap tall"><canvas id="chart-dept"></canvas></div>
-    </div>
-  </div>
-
-  <!-- TABLE -->
-  <div class="table-section">
-    <div class="table-header">
-      <h2>Workshop breakdown</h2>
-      <span id="tbl-count">— events</span>
-    </div>
-    <div class="tbl-wrap workshop-table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Event</th>
-            <th>Semester</th>
-            <th>Tag</th>
-            <th>Type</th>
-            <th>Attendees</th>
-            <th>RSVPs</th>
-            <th>Show rate</th>
-          </tr>
-        </thead>
-        <tbody id="tbl-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-</div><!-- /dashboard -->
-
-<script>
-// ═══════════════════════════════════════════════
-//  CONFIG — replace CLIENT_ID before deploying
-// ═══════════════════════════════════════════════
-const CLIENT_ID   = '278323499233-03fhs55vg775ojjcg6gr7skk0fetjrkd.apps.googleusercontent.com';
-const SHEET_ID    = '10nl1sgAj4frbUa90vV0JsD6Avq7cNbAQugmEU4iaTFk';
-const SHEET_NAME  = 'Event Attendance Log';
-const SCOPE       = 'https://www.googleapis.com/auth/spreadsheets.readonly';
-
-// ═══════════════════════════════════════════════
-//  PALETTE
-// ═══════════════════════════════════════════════
-const COLORS = [
-  '#10998c', '#41b0e7', '#6c6cb4', '#00b5a8',
-  '#189ccd', '#525299', '#89e5da', '#71cce1'
-];
-
-// ═══════════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════════
-let tokenClient;
-let accessToken  = null;
-let rawRows      = [];   // all attended rows (parsed)
-let allRsvpRows  = [];   // for show-rate calc
-let charts       = {};
-let filterOptions = {};
-let filtersState  = {};
-let openFilterId  = null;
-
-const FILTER_CONFIGS = [
-  { id: 'f-semester', label: 'Semester', key: 'semester', allLabel: 'All semesters', emptyLabel: 'No semesters available' },
-  { id: 'f-tag', label: 'Tag / subject', key: 'tag', allLabel: 'All subjects', emptyLabel: 'No subjects available' },
-  { id: 'f-type', label: 'Type', key: 'type', allLabel: 'All types', emptyLabel: 'No event types available' },
-  { id: 'f-affiliation', label: 'Affiliation', key: 'affil', allLabel: 'All affiliations', emptyLabel: 'No affiliations available' },
-  { id: 'f-dept', label: 'Department', key: 'dept', allLabel: 'All departments', emptyLabel: 'No departments available' }
-];
-
-// ═══════════════════════════════════════════════
-//  AUTH
-// ═══════════════════════════════════════════════
-window.addEventListener('load', () => {
-  // Wait for GSI to load
-  const wait = setInterval(() => {
-    if (window.google?.accounts?.oauth2) {
-      clearInterval(wait);
-      tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: SCOPE,
-        callback: handleToken,
-      });
-    }
-  }, 100);
-});
-
-function signIn() {
-  if (!tokenClient) { showError('Google Identity library not loaded yet. Please wait a moment and try again.'); return; }
-  tokenClient.requestAccessToken({ prompt: '' });
-}
-
-function signOut() {
-  if (accessToken) google.accounts.oauth2.revoke(accessToken);
-  accessToken = null;
-  setUIState('landing');
-}
-
-function handleToken(resp) {
-  if (resp.error) { showError('Auth error: ' + resp.error); return; }
-  accessToken = resp.access_token;
-  setUIState('loading');
-  fetchSheetData();
-}
-
-// ═══════════════════════════════════════════════
-//  DATA FETCH
-// ═══════════════════════════════════════════════
-async function fetchSheetData() {
-  const range = encodeURIComponent(`'${SHEET_NAME}'`);
-  const url   = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}`;
-  try {
-    const res  = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-    const json = await res.json();
-    if (json.error) { showError('Sheets API error: ' + json.error.message); return; }
-    processData(json.values || []);
-  } catch(e) {
-    showError('Network error: ' + e.message);
-  }
-}
-
-// ═══════════════════════════════════════════════
-//  DATA PROCESSING
-// ═══════════════════════════════════════════════
-function parseSemester(dateStr) {
-  if (!dateStr) return 'Unknown';
-  // Try to parse M/D/YY or M/D/YYYY
-  const parts = dateStr.split('/');
-  if (parts.length < 3) return 'Unknown';
-  let month = parseInt(parts[0]);
-  let year  = parseInt(parts[2]);
-  if (year < 100) year += 2000;
-  if (month >= 1 && month <= 5)  return `Spring ${year}`;
-  if (month >= 6 && month <= 7)  return `Summer ${year}`;
-  if (month >= 8 && month <= 12) return `Fall ${year}`;
-  return `${year}`;
-}
-
-function processData(values) {
-  if (!values.length) { showError('No data found in the sheet.'); return; }
-
-  const headers = values[0].map(h => h.trim());
-  const idx = h => headers.indexOf(h);
-
-  const iDate    = idx('Date');
-  const iName    = idx('Event Name');
-  const iTag     = idx('Tag');
-  const iType    = idx('Type');
-  const iAffil   = idx('Affiliation');
-  const iDept    = idx('Department');
-  const iRsvp    = idx("RSVP'd");
-  const iAttend  = idx('Attended');
-
-  const parse = row => ({
-    date:      (row[iDate]   || '').trim(),
-    event:     (row[iName]   || '').trim(),
-    tag:       (row[iTag]    || '').trim(),
-    type:      (row[iType]   || '').trim(),
-    affil:     (row[iAffil]  || '').trim(),
-    dept:      (row[iDept]   || '').trim(),
-    rsvpd:     (row[iRsvp]   || '').trim().toLowerCase() === 'yes',
-    attended:  (row[iAttend] || '').trim().toLowerCase() === 'yes',
-    semester:  parseSemester((row[iDate] || '').trim()),
-  });
-
-  const dataRows = values.slice(1).map(parse).filter(r => r.event);
-  allRsvpRows    = dataRows.filter(r => r.rsvpd);
-  rawRows        = dataRows.filter(r => r.attended);
-
-  initializeFilters(rawRows);
-  setUIState('dashboard');
-  renderAll(rawRows);
-}
-
-// ═══════════════════════════════════════════════
-//  FILTERS
-// ═══════════════════════════════════════════════
-function unique(arr, key) {
-  return [...new Set(arr.map(r => r[key]).filter(Boolean))].sort();
-}
-
-function initializeFilters(rows) {
-  filterOptions = Object.fromEntries(
-    FILTER_CONFIGS.map(config => [config.id, unique(rows, config.key)])
-  );
-  filtersState = Object.fromEntries(
-    FILTER_CONFIGS.map(config => [config.id, new Set()])
-  );
-
-  renderFilterControls();
-  attachFilterEvents();
-}
-
-function renderFilterControls() {
-  const container = document.getElementById('filters-list');
-  container.innerHTML = FILTER_CONFIGS.map(config => {
-    const summary = getFilterSummary(config.id);
-    const active = filtersState[config.id]?.size ? 'active' : '';
-    const open = openFilterId === config.id ? 'open' : '';
-    return `<div class="filter-group ${open}" data-filter-id="${config.id}">
-      <label for="${config.id}-trigger">${config.label}</label>
-      <button
-        type="button"
-        class="filter-trigger ${active}"
-        id="${config.id}-trigger"
-        aria-haspopup="true"
-        aria-expanded="${openFilterId === config.id ? 'true' : 'false'}"
-        aria-controls="${config.id}-menu"
-      >
-        <span class="filter-trigger-text">${escapeHtml(summary)}</span>
-      </button>
-      <div class="filter-menu" id="${config.id}-menu" ${openFilterId === config.id ? '' : 'hidden'}>
-        <div class="filter-menu-header">
-          <span class="filter-menu-title">${escapeHtml(config.label)}</span>
-          <button type="button" class="filter-clear" data-clear-filter="${config.id}" ${filtersState[config.id].size ? '' : 'disabled'}>Clear</button>
+  <section class="dashboard-grid" aria-label="Available dashboards">
+    <a class="dashboard-card" href="workshop-attendance.html">
+      <div class="card-top">
+        <div>
+          <h3 class="card-title">Workshop attendance</h3>
+          <p class="card-copy">Attendance, RSVP patterns, department reach, and event-level workshop details.</p>
         </div>
-        <div class="filter-options">
-          ${renderFilterOptions(config)}
+        <div class="preview" aria-hidden="true">
+          <div class="preview-kpis"><span></span><span></span><span></span></div>
+          <div class="preview-bars"><span style="height: 42%"></span><span style="height: 78%"></span><span style="height: 58%"></span><span style="height: 88%"></span><span style="height: 66%"></span><span style="height: 48%"></span></div>
+          <div class="preview-footer"><span></span><span></span></div>
         </div>
       </div>
-    </div>`;
-  }).join('');
-}
+      <div class="card-meta">
+        <span class="card-chip">Event Attendance Log</span>
+        <span>Open</span>
+      </div>
+    </a>
 
-function renderFilterOptions(config) {
-  const options = filterOptions[config.id] || [];
-  if (!options.length) return `<div class="filter-empty">${escapeHtml(config.emptyLabel)}</div>`;
-
-  const counts = getOptionCounts(config.id);
-  return options.map(option => {
-    const isSelected = filtersState[config.id].has(option);
-    const count = counts[option] || 0;
-    const isUnavailable = count === 0 && !isSelected;
-    return `<label class="filter-option ${isUnavailable ? 'is-disabled' : ''}">
-      <input
-        type="checkbox"
-        data-filter-id="${config.id}"
-        value="${escapeAttribute(option)}"
-        ${isSelected ? 'checked' : ''}
-        ${isUnavailable ? 'disabled' : ''}
-      />
-      <span class="filter-option-text">
-        <span class="filter-option-label">${escapeHtml(option)}</span>
-        <span class="filter-option-count">${count}</span>
-      </span>
-    </label>`;
-  }).join('');
-}
-
-function attachFilterEvents() {
-  FILTER_CONFIGS.forEach(config => {
-    const trigger = document.getElementById(`${config.id}-trigger`);
-    const menu = document.getElementById(`${config.id}-menu`);
-
-    trigger.addEventListener('click', event => {
-      event.stopPropagation();
-      toggleFilterMenu(config.id);
-    });
-
-    menu.addEventListener('click', event => {
-      event.stopPropagation();
-    });
-  });
-
-  document.querySelectorAll('[data-clear-filter]').forEach(button => {
-    button.addEventListener('click', event => {
-      const id = event.currentTarget.dataset.clearFilter;
-      clearFilter(id);
-    });
-  });
-
-  document.querySelectorAll('.filter-options input[type="checkbox"]').forEach(input => {
-    input.addEventListener('change', event => {
-      updateFilterSelection(event.currentTarget.dataset.filterId, event.currentTarget.value, event.currentTarget.checked);
-    });
-  });
-}
-
-function getFilterSummary(filterId) {
-  const config = FILTER_CONFIGS.find(item => item.id === filterId);
-  const selected = [...filtersState[filterId]];
-  if (!selected.length) return config.allLabel;
-  if (selected.length <= 2) {
-    const joined = selected.join(', ');
-    if (joined.length <= 28) return joined;
-  }
-  return `${selected.length} selected`;
-}
-
-function getRowsMatchingFilters(excludeId = null) {
-  return rawRows.filter(row => FILTER_CONFIGS.every(config => {
-    if (config.id === excludeId) return true;
-    const selected = filtersState[config.id];
-    if (!selected || selected.size === 0) return true;
-    return selected.has(row[config.key] || '');
-  }));
-}
-
-function getOptionCounts(filterId) {
-  const config = FILTER_CONFIGS.find(item => item.id === filterId);
-  const counts = {};
-  getRowsMatchingFilters(filterId).forEach(row => {
-    const value = row[config.key] || '';
-    if (!value) return;
-    counts[value] = (counts[value] || 0) + 1;
-  });
-  return counts;
-}
-
-function getFiltered() {
-  return getRowsMatchingFilters();
-}
-
-function applyFilters() {
-  renderFilterControls();
-  attachFilterEvents();
-  renderAll(getFiltered());
-}
-
-function updateFilterSelection(filterId, value, checked) {
-  if (!filtersState[filterId]) return;
-  if (checked) filtersState[filterId].add(value);
-  else filtersState[filterId].delete(value);
-  applyFilters();
-}
-
-function toggleFilterMenu(filterId) {
-  openFilterId = openFilterId === filterId ? null : filterId;
-  renderFilterControls();
-  attachFilterEvents();
-}
-
-function closeFilterMenu() {
-  if (!openFilterId) return;
-  openFilterId = null;
-  renderFilterControls();
-  attachFilterEvents();
-}
-
-function clearFilter(filterId) {
-  if (!filtersState[filterId]) return;
-  filtersState[filterId].clear();
-  applyFilters();
-}
-
-function resetFilters() {
-  FILTER_CONFIGS.forEach(config => filtersState[config.id].clear());
-  openFilterId = null;
-  applyFilters();
-}
-
-// ═══════════════════════════════════════════════
-//  RENDER
-// ═══════════════════════════════════════════════
-function renderAll(rows) {
-  renderKPIs(rows);
-  renderChart('chart-semester',   countBy(rows, 'semester'),   'bar');
-  renderChart('chart-tag',        countBy(rows, 'tag'),        'doughnut');
-  renderChart('chart-type',       countBy(rows, 'type'),       'doughnut');
-  renderChart('chart-affiliation',countBy(rows, 'affil'),      'bar');
-  renderChart('chart-dept',       topN(countBy(rows, 'dept'), 20), 'bar', true);
-  renderTable(rows);
-}
-
-function countBy(rows, key) {
-  const m = {};
-  rows.forEach(r => {
-    const v = r[key] || 'Unknown';
-    m[v] = (m[v] || 0) + 1;
-  });
-  // Sort descending
-  return Object.fromEntries(Object.entries(m).sort((a,b) => b[1]-a[1]));
-}
-
-function topN(obj, n) {
-  return Object.fromEntries(Object.entries(obj).slice(0, n));
-}
-
-function renderKPIs(rows) {
-  document.getElementById('kpi-total').textContent  = rows.length.toLocaleString();
-  const events = new Set(rows.map(r => r.event + '|' + r.date));
-  document.getElementById('kpi-events').textContent = events.size;
-  document.getElementById('kpi-avg').textContent    = events.size
-    ? (rows.length / events.size).toFixed(1) : '—';
-
-  // Show rate: attended / rsvp'd (from full unfiltered set, or filtered)
-  const rsvpCount = allRsvpRows.length;
-  document.getElementById('kpi-show').textContent   = rsvpCount
-    ? Math.round((rawRows.length / rsvpCount) * 100) + '%' : '—';
-}
-
-function renderChart(id, data, type, horizontal = false) {
-  const labels = Object.keys(data);
-  const values = Object.values(data);
-  const colors = labels.map((_, i) => COLORS[i % COLORS.length]);
-
-  if (charts[id]) charts[id].destroy();
-
-  const ctx = document.getElementById(id).getContext('2d');
-
-  const isDoughnut = type === 'doughnut';
-
-  charts[id] = new Chart(ctx, {
-    type: isDoughnut ? 'doughnut' : 'bar',
-    data: {
-      labels,
-      datasets: [{
-        data: values,
-        backgroundColor: isDoughnut
-          ? colors
-          : colors.map(c => c + 'cc'),
-        borderColor: isDoughnut
-          ? colors.map(c => c + '33')
-          : colors,
-        borderWidth: isDoughnut ? 2 : 1,
-        borderRadius: isDoughnut ? 0 : 4,
-        hoverOffset: 8,
-      }]
-    },
-    options: {
-      indexAxis: horizontal ? 'y' : 'x',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: isDoughnut,
-          position: 'right',
-          labels: {
-            color: '#333333',
-            font: { family: 'Montserrat', size: 12 },
-            boxWidth: 12,
-            padding: 14,
-          }
-        },
-        tooltip: {
-          backgroundColor: '#ffffff',
-          borderColor: '#dce0e9',
-          borderWidth: 2,
-          titleColor: '#000000',
-          bodyColor: '#333333',
-          titleFont: { family: 'Lato', size: 12 },
-          bodyFont:  { family: 'Montserrat', size: 13 },
-        }
-      },
-      scales: isDoughnut ? {} : {
-        x: {
-          grid:  { color: '#dce0e9', drawBorder: false },
-          ticks: { color: '#666666', font: { family: 'Montserrat', size: 11 },
-                   maxRotation: horizontal ? 0 : 40 }
-        },
-        y: {
-          grid:  { color: '#dce0e9', drawBorder: false },
-          ticks: { color: '#666666', font: { family: 'Montserrat', size: 11 } },
-          beginAtZero: true
-        }
-      }
-    }
-  });
-}
-
-function renderTable(rows) {
-  // Aggregate per event
-  const evMap = {};
-  rows.forEach(r => {
-    const key = r.event + '||' + r.date;
-    if (!evMap[key]) evMap[key] = { event: r.event, semester: r.semester, tag: r.tag, type: r.type, attended: 0, rsvpd: 0 };
-    evMap[key].attended++;
-  });
-  // Count RSVPs per event from full set
-  allRsvpRows.forEach(r => {
-    const key = r.event + '||' + r.date;
-    if (evMap[key]) evMap[key].rsvpd++;
-  });
-
-  const events = Object.values(evMap).sort((a,b) => b.attended - a.attended);
-  document.getElementById('tbl-count').textContent = events.length + ' events';
-
-  const typeColors = {
-    Bootcamp: '#525299',
-    Workshop: '#10998c',
-    Seminar: '#6c6cb4',
-    Webinar: '#189ccd'
-  };
-
-  document.getElementById('tbl-body').innerHTML = events.map(e => {
-    const rate  = e.rsvpd ? Math.round((e.attended / e.rsvpd) * 100) + '%' : '—';
-    const color = typeColors[e.type] || '#666666';
-    return `<tr>
-      <td>${e.event}</td>
-      <td>${e.semester}</td>
-      <td>${e.tag || '—'}</td>
-      <td><span class="badge" style="background:${color}22;color:${color}">${e.type || '—'}</span></td>
-      <td><strong>${e.attended}</strong></td>
-      <td>${e.rsvpd || '—'}</td>
-      <td>${rate}</td>
-    </tr>`;
-  }).join('');
-}
-
-// ═══════════════════════════════════════════════
-//  UI STATE
-// ═══════════════════════════════════════════════
-function setUIState(state) {
-  document.getElementById('landing').style.display   = state === 'landing'  ? 'flex'  : 'none';
-  document.getElementById('loader').style.display    = state === 'loading'  ? 'flex'  : 'none';
-  document.getElementById('dashboard').style.display = state === 'dashboard'? 'block' : 'none';
-  document.getElementById('error-msg').style.display = 'none';
-
-  document.getElementById('sign-in-btn').style.display  = state === 'dashboard' ? 'none'  : 'block';
-  document.getElementById('sign-out-btn').style.display = state === 'dashboard' ? 'block' : 'none';
-
-  const pill = document.getElementById('status-pill');
-  if (state === 'dashboard') {
-    pill.textContent = 'connected';
-    pill.classList.add('connected');
-  } else {
-    pill.textContent = 'not connected';
-    pill.classList.remove('connected');
-  }
-}
-
-function showError(msg) {
-  setUIState('landing');
-  const el = document.getElementById('error-msg');
-  el.style.display = 'block';
-  el.textContent   = 'Notice: ' + msg;
-}
-
-document.addEventListener('click', event => {
-  if (!event.target.closest('.filter-group')) closeFilterMenu();
-});
-
-document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') closeFilterMenu();
-});
-
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function escapeAttribute(value) {
-  return escapeHtml(value);
-}
-</script>
+    <a class="dashboard-card" href="consultations.html">
+      <div class="card-top">
+        <div>
+          <h3 class="card-title">Consultation history</h3>
+          <p class="card-copy">Consultation volume, service patterns, client reach, and staff workload.</p>
+        </div>
+        <div class="preview" aria-hidden="true">
+          <div class="preview-kpis"><span></span><span></span><span></span></div>
+          <div class="preview-bars"><span style="height: 74%"></span><span style="height: 52%"></span><span style="height: 84%"></span><span style="height: 62%"></span><span style="height: 46%"></span><span style="height: 72%"></span></div>
+          <div class="preview-footer"><span></span><span></span></div>
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="card-chip">Service Log</span>
+        <span>Open</span>
+      </div>
+    </a>
+  </section>
+</main>
 </body>
 </html>

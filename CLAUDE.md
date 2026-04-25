@@ -8,7 +8,8 @@ This repository contains standalone vanilla HTML/CSS/JS dashboards for the **Lea
 
 There is no build system, package manager, or framework.
 
-- `index.html`: workshop attendance dashboard using the `Event Attendance Log` sheet.
+- `index.html`: landing page linking to the available dashboards.
+- `workshop-attendance.html`: workshop attendance dashboard using the `Event Attendance Log` sheet.
 - `consultations.html`: consultation history dashboard using the `Service Log` sheet.
 
 ## Development
@@ -19,7 +20,7 @@ Open either HTML file directly in a browser, or serve the directory locally:
 python3 -m http.server 8080
 ```
 
-Then visit `http://localhost:8080/index.html` or `http://localhost:8080/consultations.html`.
+Then visit `http://localhost:8080/index.html`, `http://localhost:8080/workshop-attendance.html`, or `http://localhost:8080/consultations.html`.
 
 Both dashboards require Google sign-in to function. They use the **Google Identity Services (GSI)** implicit flow to obtain an OAuth access token, then call the Google Sheets API.
 
