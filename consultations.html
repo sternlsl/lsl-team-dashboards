@@ -488,6 +488,10 @@
     background: rgba(255, 255, 255, 0.96);
     box-shadow: var(--shadow);
   }
+  .client-table-wrap {
+    max-height: 560px;
+    overflow: auto;
+  }
   table {
     width: 100%;
     border-collapse: collapse;
@@ -502,6 +506,11 @@
     color: var(--text);
     border-bottom: 2px solid var(--border);
     white-space: nowrap;
+  }
+  .client-table-wrap th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
   }
   td {
     padding: 14px 16px;
@@ -729,7 +738,7 @@
       <h2>Who we help most frequently</h2>
       <span id="tbl-count">- clients</span>
     </div>
-    <div class="tbl-wrap">
+    <div class="tbl-wrap client-table-wrap">
       <table>
         <thead>
           <tr>
