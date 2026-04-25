@@ -88,7 +88,7 @@
           <div class="chart-subtitle" id="semester-chart-subtitle">Actual attendees only</div>
         </div>
         <label class="sr-only" for="semester-metric">Semester attendance metric</label>
-        <select class="chart-select" id="semester-metric">
+        <select class="chart-select" id="semester-metric" data-attendance-metric="semester">
           <option value="total">Total attendance</option>
           <option value="average">Average per workshop</option>
         </select>
@@ -96,8 +96,17 @@
       <div class="chart-wrap"><canvas id="chart-semester"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">Attendance by subject tag</div>
-      <div class="chart-subtitle">Workshop topic area</div>
+      <div class="chart-card-header">
+        <div class="chart-card-heading">
+          <div class="chart-title">Attendance by subject tag</div>
+          <div class="chart-subtitle" id="tag-chart-subtitle">Workshop topic area</div>
+        </div>
+        <label class="sr-only" for="tag-metric">Subject tag attendance metric</label>
+        <select class="chart-select" id="tag-metric" data-attendance-metric="tag">
+          <option value="total">Total attendance</option>
+          <option value="average">Average per workshop</option>
+        </select>
+      </div>
       <div class="chart-wrap"><canvas id="chart-tag"></canvas></div>
     </div>
   </div>
@@ -105,13 +114,31 @@
   <!-- ROW 2: Type + Department -->
   <div class="chart-grid">
     <div class="chart-card">
-      <div class="chart-title">Attendance by event type</div>
-      <div class="chart-subtitle">Bootcamp, workshop, etc.</div>
+      <div class="chart-card-header">
+        <div class="chart-card-heading">
+          <div class="chart-title">Attendance by event type</div>
+          <div class="chart-subtitle" id="type-chart-subtitle">Bootcamp, workshop, etc.</div>
+        </div>
+        <label class="sr-only" for="type-metric">Event type attendance metric</label>
+        <select class="chart-select" id="type-metric" data-attendance-metric="type">
+          <option value="total">Total attendance</option>
+          <option value="average">Average per workshop</option>
+        </select>
+      </div>
       <div class="chart-wrap"><canvas id="chart-type"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">Attendance by affiliation</div>
-      <div class="chart-subtitle">Faculty, staff, student…</div>
+      <div class="chart-card-header">
+        <div class="chart-card-heading">
+          <div class="chart-title">Attendance by affiliation</div>
+          <div class="chart-subtitle" id="affiliation-chart-subtitle">Faculty, staff, student…</div>
+        </div>
+        <label class="sr-only" for="affiliation-metric">Affiliation attendance metric</label>
+        <select class="chart-select" id="affiliation-metric" data-attendance-metric="affiliation">
+          <option value="total">Total attendance</option>
+          <option value="average">Average per workshop</option>
+        </select>
+      </div>
       <div class="chart-wrap"><canvas id="chart-affiliation"></canvas></div>
     </div>
   </div>
@@ -119,8 +146,17 @@
   <!-- ROW 3: Department bar (full width) -->
   <div class="chart-grid full">
     <div class="chart-card">
-      <div class="chart-title">Attendance by department</div>
-      <div class="chart-subtitle">Top departments represented</div>
+      <div class="chart-card-header">
+        <div class="chart-card-heading">
+          <div class="chart-title">Attendance by department</div>
+          <div class="chart-subtitle" id="dept-chart-subtitle">Top departments represented</div>
+        </div>
+        <label class="sr-only" for="dept-metric">Department attendance metric</label>
+        <select class="chart-select" id="dept-metric" data-attendance-metric="dept">
+          <option value="total">Total attendance</option>
+          <option value="average">Average per workshop</option>
+        </select>
+      </div>
       <div class="chart-wrap tall"><canvas id="chart-dept"></canvas></div>
     </div>
   </div>
@@ -179,7 +215,13 @@ let charts       = {};
 let filterOptions = {};
 let filtersState  = {};
 let openFilterId  = null;
-let semesterMetric = 'total';
+let chartMetrics = {
+  semester: 'total',
+  tag: 'total',
+  type: 'total',
+  affiliation: 'total',
+  dept: 'total'
+};
 
 const FILTER_CONFIGS = [
   { id: 'f-semester', label: 'Semester', key: 'semester', allLabel: 'All semesters', emptyLabel: 'No semesters available' },
@@ -188,6 +230,52 @@ const FILTER_CONFIGS = [
   { id: 'f-affiliation', label: 'Affiliation', key: 'affil', allLabel: 'All affiliations', emptyLabel: 'No affiliations available' },
   { id: 'f-dept', label: 'Department', key: 'dept', allLabel: 'All departments', emptyLabel: 'No departments available' }
 ];
+
+const ATTENDANCE_CHARTS = {
+  semester: {
+    canvasId: 'chart-semester',
+    subtitleId: 'semester-chart-subtitle',
+    key: 'semester',
+    type: 'bar',
+    totalSubtitle: 'Actual attendees only',
+    averageSubtitle: 'Average actual attendees per workshop',
+    sortLabels: compareSemesters
+  },
+  tag: {
+    canvasId: 'chart-tag',
+    subtitleId: 'tag-chart-subtitle',
+    key: 'tag',
+    type: 'doughnut',
+    totalSubtitle: 'Workshop topic area',
+    averageSubtitle: 'Average attendees per workshop by topic area'
+  },
+  type: {
+    canvasId: 'chart-type',
+    subtitleId: 'type-chart-subtitle',
+    key: 'type',
+    type: 'doughnut',
+    totalSubtitle: 'Bootcamp, workshop, etc.',
+    averageSubtitle: 'Average attendees per workshop by event type'
+  },
+  affiliation: {
+    canvasId: 'chart-affiliation',
+    subtitleId: 'affiliation-chart-subtitle',
+    key: 'affil',
+    type: 'bar',
+    totalSubtitle: 'Faculty, staff, student…',
+    averageSubtitle: 'Average attendees per workshop by affiliation'
+  },
+  dept: {
+    canvasId: 'chart-dept',
+    subtitleId: 'dept-chart-subtitle',
+    key: 'dept',
+    type: 'bar',
+    horizontal: true,
+    limit: 20,
+    totalSubtitle: 'Top departments represented',
+    averageSubtitle: 'Top departments by average attendees per workshop'
+  }
+};
 
 // ═══════════════════════════════════════════════
 //  AUTH
@@ -475,43 +563,48 @@ function resetFilters() {
 // ═══════════════════════════════════════════════
 function renderAll(rows) {
   renderKPIs(rows);
-  renderSemesterChart(rows);
-  renderChart('chart-tag',        countBy(rows, 'tag'),        'doughnut');
-  renderChart('chart-type',       countBy(rows, 'type'),       'doughnut');
-  renderChart('chart-affiliation',countBy(rows, 'affil'),      'bar');
-  renderChart('chart-dept',       topN(countBy(rows, 'dept'), 20), 'bar', true);
+  Object.keys(ATTENDANCE_CHARTS).forEach(chartId => renderAttendanceChart(chartId, rows));
   renderTable(rows);
 }
 
-function renderSemesterChart(rows) {
-  const data = getSemesterAttendanceData(rows, semesterMetric);
-  const subtitle = semesterMetric === 'average'
-    ? 'Average actual attendees per workshop'
-    : 'Actual attendees only';
+function renderAttendanceChart(chartId, rows) {
+  const config = ATTENDANCE_CHARTS[chartId];
+  const metric = chartMetrics[chartId] || 'total';
+  const subtitle = metric === 'average' ? config.averageSubtitle : config.totalSubtitle;
+  let data = getAttendanceMetricData(rows, config.key, metric, config.sortLabels);
 
-  document.getElementById('semester-chart-subtitle').textContent = subtitle;
-  renderChart('chart-semester', data, 'bar', false, subtitle);
+  if (config.limit) data = topN(data, config.limit);
+
+  document.getElementById(config.subtitleId).textContent = subtitle;
+  renderChart(config.canvasId, data, config.type, config.horizontal, subtitle);
 }
 
-function getSemesterAttendanceData(rows, metric) {
+function getAttendanceMetricData(rows, key, metric, labelComparator = null) {
   const m = {};
   rows.forEach(r => {
-    const semester = r.semester || 'Unknown';
-    if (!m[semester]) m[semester] = { attendees: 0, events: new Set() };
-    m[semester].attendees++;
-    m[semester].events.add(r.event + '|' + r.date);
+    const label = r[key] || 'Unknown';
+    if (!m[label]) m[label] = { attendees: 0, events: new Set() };
+    m[label].attendees++;
+    m[label].events.add(r.event + '|' + r.date);
   });
 
   const entries = Object.entries(m)
-    .map(([semester, stats]) => [
-      semester,
+    .map(([label, stats]) => [
+      label,
       metric === 'average'
         ? Number((stats.attendees / stats.events.size).toFixed(1))
         : stats.attendees
-    ])
-    .sort((a, b) => getSemesterSortValue(a[0]) - getSemesterSortValue(b[0]));
+    ]);
+
+  entries.sort(labelComparator
+    ? (a, b) => labelComparator(a[0], b[0])
+    : (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 
   return Object.fromEntries(entries);
+}
+
+function compareSemesters(a, b) {
+  return getSemesterSortValue(a) - getSemesterSortValue(b);
 }
 
 function getSemesterSortValue(label) {
@@ -689,9 +782,12 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Escape') closeFilterMenu();
 });
 
-document.getElementById('semester-metric').addEventListener('change', event => {
-  semesterMetric = event.currentTarget.value;
-  renderSemesterChart(getFiltered());
+document.querySelectorAll('[data-attendance-metric]').forEach(select => {
+  select.addEventListener('change', event => {
+    const chartId = event.currentTarget.dataset.attendanceMetric;
+    chartMetrics[chartId] = event.currentTarget.value;
+    renderAttendanceChart(chartId, getFiltered());
+  });
 });
 
 function escapeHtml(value) {
