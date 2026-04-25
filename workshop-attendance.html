@@ -54,6 +54,7 @@
     <div id="filters-list" class="filters-list"></div>
     <button id="reset-btn" onclick="resetFilters()">Reset</button>
   </div>
+  <div id="data-context" class="data-context" aria-live="polite"></div>
 
   <!-- KPIs -->
   <div class="kpi-row">
@@ -167,17 +168,24 @@
       <h2>Workshop breakdown</h2>
       <span id="tbl-count">— events</span>
     </div>
+    <div class="table-tools">
+      <div class="table-search-group">
+        <label for="workshop-table-search">Search workshops</label>
+        <input id="workshop-table-search" class="table-search" type="search" placeholder="Search event, semester, tag, type..." />
+      </div>
+      <button id="workshop-export" class="export-btn" type="button">Export CSV</button>
+    </div>
     <div class="tbl-wrap workshop-table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Event</th>
-            <th>Semester</th>
-            <th>Tag</th>
-            <th>Type</th>
-            <th>Attendees</th>
-            <th>RSVPs</th>
-            <th>Show rate</th>
+            <th><button class="sort-button" type="button" data-workshop-sort="event">Event <span class="sort-indicator"></span></button></th>
+            <th><button class="sort-button" type="button" data-workshop-sort="semester">Semester <span class="sort-indicator"></span></button></th>
+            <th><button class="sort-button" type="button" data-workshop-sort="tag">Tag <span class="sort-indicator"></span></button></th>
+            <th><button class="sort-button" type="button" data-workshop-sort="type">Type <span class="sort-indicator"></span></button></th>
+            <th><button class="sort-button" type="button" data-workshop-sort="attended">Attendees <span class="sort-indicator"></span></button></th>
+            <th><button class="sort-button" type="button" data-workshop-sort="rsvpd">RSVPs <span class="sort-indicator"></span></button></th>
+            <th><button class="sort-button" type="button" data-workshop-sort="rateValue">Show rate <span class="sort-indicator"></span></button></th>
           </tr>
         </thead>
         <tbody id="tbl-body"></tbody>
@@ -215,6 +223,9 @@ let charts       = {};
 let filterOptions = {};
 let filtersState  = {};
 let openFilterId  = null;
+let tableSearch = '';
+let tableSort = { key: 'attended', direction: 'desc' };
+let currentWorkshopTableRows = [];
 let chartMetrics = {
   semester: 'total',
   tag: 'total',
@@ -496,13 +507,17 @@ function getFilterSummary(filterId) {
   return `${selected.length} selected`;
 }
 
-function getRowsMatchingFilters(excludeId = null) {
-  return rawRows.filter(row => FILTER_CONFIGS.every(config => {
+function getRowsMatchingFiltersFrom(rows, excludeId = null) {
+  return rows.filter(row => FILTER_CONFIGS.every(config => {
     if (config.id === excludeId) return true;
     const selected = filtersState[config.id];
     if (!selected || selected.size === 0) return true;
     return selected.has(row[config.key] || '');
   }));
+}
+
+function getRowsMatchingFilters(excludeId = null) {
+  return getRowsMatchingFiltersFrom(rawRows, excludeId);
 }
 
 function getOptionCounts(filterId) {
@@ -562,9 +577,27 @@ function resetFilters() {
 //  RENDER
 // ═══════════════════════════════════════════════
 function renderAll(rows) {
+  renderContext(rows);
   renderKPIs(rows);
   Object.keys(ATTENDANCE_CHARTS).forEach(chartId => renderAttendanceChart(chartId, rows));
   renderTable(rows);
+}
+
+function renderContext(rows) {
+  const events = new Set(rows.map(r => r.event + '|' + r.date)).size;
+  const activeFilters = FILTER_CONFIGS
+    .filter(config => filtersState[config.id]?.size)
+    .map(config => `${config.label}: ${[...filtersState[config.id]].join(', ')}`);
+
+  const chips = [
+    `${rows.length.toLocaleString()} attendee records`,
+    `${events.toLocaleString()} workshops`,
+    activeFilters.length ? `${activeFilters.length} active filter${activeFilters.length === 1 ? '' : 's'}` : 'All filters clear'
+  ];
+
+  document.getElementById('data-context').innerHTML = chips
+    .map(chip => `<span class="context-chip">${escapeHtml(chip)}</span>`)
+    .join('');
 }
 
 function renderAttendanceChart(chartId, rows) {
@@ -575,7 +608,10 @@ function renderAttendanceChart(chartId, rows) {
 
   if (config.limit) data = topN(data, config.limit);
 
-  document.getElementById(config.subtitleId).textContent = subtitle;
+  const subtitleContext = metric === 'average'
+    ? `${Object.keys(data).length.toLocaleString()} categories`
+    : `${rows.length.toLocaleString()} attendees`;
+  document.getElementById(config.subtitleId).textContent = `${subtitle} · ${subtitleContext}`;
   renderChart(config.canvasId, data, config.type, config.horizontal, subtitle);
 }
 
@@ -635,11 +671,71 @@ function renderKPIs(rows) {
   document.getElementById('kpi-avg').textContent    = events.size
     ? (rows.length / events.size).toFixed(1) : '—';
 
-  // Show rate: attended / rsvp'd (from full unfiltered set, or filtered)
-  const rsvpCount = allRsvpRows.length;
+  const rsvpCount = getRowsMatchingFiltersFrom(allRsvpRows).length;
   document.getElementById('kpi-show').textContent   = rsvpCount
-    ? Math.round((rawRows.length / rsvpCount) * 100) + '%' : '—';
+    ? Math.round((rows.length / rsvpCount) * 100) + '%' : '—';
 }
+
+const barValueLabelsPlugin = {
+  id: 'barValueLabels',
+  afterDatasetsDraw(chart, args, pluginOptions) {
+    if (!pluginOptions?.display) return;
+    const labels = chart.data.labels || [];
+    if (labels.length > (pluginOptions.maxLabels || 18)) return;
+
+    const { ctx, chartArea } = chart;
+    const horizontal = chart.options.indexAxis === 'y';
+    ctx.save();
+    ctx.font = '700 11px Montserrat, Arial, sans-serif';
+    ctx.fillStyle = '#333333';
+    ctx.textBaseline = 'middle';
+
+    chart.data.datasets.forEach((dataset, datasetIndex) => {
+      const meta = chart.getDatasetMeta(datasetIndex);
+      if (meta.hidden) return;
+      meta.data.forEach((element, index) => {
+        const value = dataset.data[index];
+        if (!Number.isFinite(value) || value === 0) return;
+        const pos = element.tooltipPosition();
+        const label = Number(value).toLocaleString();
+        if (horizontal) {
+          ctx.textAlign = 'left';
+          const x = Math.min(pos.x + 7, chartArea.right - ctx.measureText(label).width);
+          ctx.fillText(label, x, pos.y);
+        } else {
+          ctx.textAlign = 'center';
+          const y = Math.max(pos.y - 9, chartArea.top + 8);
+          ctx.fillText(label, pos.x, y);
+        }
+      });
+    });
+    ctx.restore();
+  }
+};
+
+const doughnutCenterTextPlugin = {
+  id: 'doughnutCenterText',
+  afterDraw(chart, args, pluginOptions) {
+    if (!pluginOptions?.display) return;
+    const values = chart.data.datasets[0]?.data || [];
+    const total = values.reduce((sum, value) => sum + Number(value || 0), 0);
+    const meta = chart.getDatasetMeta(0);
+    if (!meta?.data?.length) return;
+    const { x, y } = meta.data[0];
+    const { ctx } = chart;
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#000000';
+    ctx.font = '700 22px Lato, Arial, sans-serif';
+    ctx.fillText(total.toLocaleString(), x, y - 7);
+    ctx.fillStyle = '#666666';
+    ctx.font = '600 11px Montserrat, Arial, sans-serif';
+    ctx.fillText('total', x, y + 13);
+    ctx.restore();
+  }
+};
 
 function renderChart(id, data, type, horizontal = false, datasetLabel = '') {
   const labels = Object.keys(data);
@@ -693,6 +789,21 @@ function renderChart(id, data, type, horizontal = false, datasetLabel = '') {
           bodyColor: '#333333',
           titleFont: { family: 'Lato', size: 12 },
           bodyFont:  { family: 'Montserrat', size: 13 },
+          callbacks: {
+            label: context => {
+              const value = Number(context.raw || 0);
+              const total = context.dataset.data.reduce((sum, item) => sum + Number(item || 0), 0);
+              const pct = total ? ` (${Math.round((value / total) * 100)}%)` : '';
+              return `${context.label}: ${value.toLocaleString()}${isDoughnut ? pct : ''}`;
+            }
+          }
+        },
+        barValueLabels: {
+          display: !isDoughnut,
+          maxLabels: horizontal ? 24 : 16
+        },
+        doughnutCenterText: {
+          display: isDoughnut
         }
       },
       scales: isDoughnut ? {} : {
@@ -707,26 +818,46 @@ function renderChart(id, data, type, horizontal = false, datasetLabel = '') {
           beginAtZero: true
         }
       }
-    }
+    },
+    plugins: [barValueLabelsPlugin, doughnutCenterTextPlugin]
   });
 }
 
 function renderTable(rows) {
-  // Aggregate per event
   const evMap = {};
   rows.forEach(r => {
     const key = r.event + '||' + r.date;
     if (!evMap[key]) evMap[key] = { event: r.event, semester: r.semester, tag: r.tag, type: r.type, attended: 0, rsvpd: 0 };
     evMap[key].attended++;
   });
-  // Count RSVPs per event from full set
-  allRsvpRows.forEach(r => {
+
+  getRowsMatchingFiltersFrom(allRsvpRows).forEach(r => {
     const key = r.event + '||' + r.date;
     if (evMap[key]) evMap[key].rsvpd++;
   });
 
-  const events = Object.values(evMap).sort((a,b) => b.attended - a.attended);
-  document.getElementById('tbl-count').textContent = events.length + ' events';
+  const search = tableSearch.trim().toLowerCase();
+  let events = Object.values(evMap).map(event => ({
+    ...event,
+    rateValue: event.rsvpd ? event.attended / event.rsvpd : null
+  }));
+
+  if (search) {
+    events = events.filter(event => [
+      event.event,
+      event.semester,
+      event.tag,
+      event.type,
+      String(event.attended),
+      String(event.rsvpd),
+      event.rateValue === null ? '' : `${Math.round(event.rateValue * 100)}%`
+    ].some(value => String(value || '').toLowerCase().includes(search)));
+  }
+
+  events.sort((a, b) => compareTableValues(a, b, tableSort.key, tableSort.direction));
+  currentWorkshopTableRows = events;
+  document.getElementById('tbl-count').textContent = `${events.length} of ${Object.keys(evMap).length} events`;
+  updateWorkshopSortIndicators();
 
   const typeBadgeClasses = {
     Bootcamp: 'badge-type-bootcamp',
@@ -736,18 +867,95 @@ function renderTable(rows) {
   };
 
   document.getElementById('tbl-body').innerHTML = events.map(e => {
-    const rate  = e.rsvpd ? Math.round((e.attended / e.rsvpd) * 100) + '%' : '—';
+    const rate  = e.rateValue === null ? '—' : Math.round(e.rateValue * 100) + '%';
     const badgeClass = typeBadgeClasses[e.type] || 'badge-type-default';
+    const rateClass = getRateClass(e.rateValue);
     return `<tr>
-      <td>${e.event}</td>
-      <td>${e.semester}</td>
-      <td>${e.tag || '—'}</td>
-      <td><span class="badge ${badgeClass}">${e.type || '—'}</span></td>
+      <td>${escapeHtml(e.event)}</td>
+      <td>${escapeHtml(e.semester)}</td>
+      <td>${escapeHtml(e.tag || '—')}</td>
+      <td><span class="badge ${badgeClass}">${escapeHtml(e.type || '—')}</span></td>
       <td><strong>${e.attended}</strong></td>
       <td>${e.rsvpd || '—'}</td>
-      <td>${rate}</td>
+      <td><span class="rate-badge ${rateClass}">${rate}</span></td>
     </tr>`;
   }).join('');
+}
+
+function compareTableValues(a, b, key, direction) {
+  const multiplier = direction === 'asc' ? 1 : -1;
+  const av = a[key];
+  const bv = b[key];
+
+  if (key === 'semester') {
+    return multiplier * (getSemesterSortValue(av) - getSemesterSortValue(bv));
+  }
+
+  if (typeof av === 'number' || typeof bv === 'number' || key === 'rateValue') {
+    const an = av === null || av === undefined ? -Infinity : Number(av);
+    const bn = bv === null || bv === undefined ? -Infinity : Number(bv);
+    return multiplier * (an - bn);
+  }
+
+  return multiplier * String(av || '').localeCompare(String(bv || ''));
+}
+
+function getRateClass(value) {
+  if (value === null) return 'status-neutral';
+  if (value >= 0.75) return 'rate-high';
+  if (value >= 0.5) return 'rate-mid';
+  return 'rate-low';
+}
+
+function updateWorkshopSortIndicators() {
+  document.querySelectorAll('[data-workshop-sort]').forEach(button => {
+    const indicator = button.querySelector('.sort-indicator');
+    if (!indicator) return;
+    indicator.textContent = button.dataset.workshopSort === tableSort.key
+      ? (tableSort.direction === 'asc' ? '▲' : '▼')
+      : '';
+  });
+}
+
+function setWorkshopSort(key) {
+  if (tableSort.key === key) {
+    tableSort.direction = tableSort.direction === 'asc' ? 'desc' : 'asc';
+  } else {
+    tableSort = { key, direction: ['event', 'semester', 'tag', 'type'].includes(key) ? 'asc' : 'desc' };
+  }
+  renderTable(getFiltered());
+}
+
+function exportWorkshopTable() {
+  const header = ['Event', 'Semester', 'Tag', 'Type', 'Attendees', 'RSVPs', 'Show rate'];
+  const rows = currentWorkshopTableRows.map(row => [
+    row.event,
+    row.semester,
+    row.tag || '',
+    row.type || '',
+    row.attended,
+    row.rsvpd || '',
+    row.rateValue === null ? '' : `${Math.round(row.rateValue * 100)}%`
+  ]);
+  downloadCsv('lsl-workshop-breakdown.csv', [header, ...rows]);
+}
+
+function downloadCsv(filename, rows) {
+  const csv = rows.map(row => row.map(escapeCsvCell).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function escapeCsvCell(value) {
+  const text = String(value ?? '');
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 // ═══════════════════════════════════════════════
@@ -789,6 +997,19 @@ document.querySelectorAll('[data-attendance-metric]').forEach(select => {
     renderAttendanceChart(chartId, getFiltered());
   });
 });
+
+document.getElementById('workshop-table-search').addEventListener('input', event => {
+  tableSearch = event.currentTarget.value;
+  renderTable(getFiltered());
+});
+
+document.querySelectorAll('[data-workshop-sort]').forEach(button => {
+  button.addEventListener('click', event => {
+    setWorkshopSort(event.currentTarget.dataset.workshopSort);
+  });
+});
+
+document.getElementById('workshop-export').addEventListener('click', exportWorkshopTable);
 
 function escapeHtml(value) {
   return String(value)

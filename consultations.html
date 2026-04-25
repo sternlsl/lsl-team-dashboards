@@ -47,6 +47,7 @@
     <div id="filters-list" class="filters-list"></div>
     <button id="reset-btn" onclick="resetFilters()">Reset</button>
   </div>
+  <div id="data-context" class="data-context" aria-live="polite"></div>
 
   <div class="kpi-row">
     <div class="kpi">
@@ -136,19 +137,26 @@
       <h2>Who we help most frequently</h2>
       <span id="tbl-count">- clients</span>
     </div>
+    <div class="table-tools">
+      <div class="table-search-group">
+        <label for="consultation-table-search">Search clients</label>
+        <input id="consultation-table-search" class="table-search" type="search" placeholder="Search client, department, rank, type..." />
+      </div>
+      <button id="consultation-export" class="export-btn" type="button">Export CSV</button>
+    </div>
     <div class="tbl-wrap client-table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Client</th>
-            <th>Department</th>
-            <th>Rank / role</th>
-            <th class="num">Email</th>
-            <th class="num">Office hours</th>
-            <th class="num">Live</th>
-            <th class="num">Other</th>
-            <th class="num">Hours</th>
-            <th class="num">Total</th>
+            <th><button class="sort-button" type="button" data-consultation-sort="client">Client <span class="sort-indicator"></span></button></th>
+            <th><button class="sort-button" type="button" data-consultation-sort="dept">Department <span class="sort-indicator"></span></button></th>
+            <th><button class="sort-button" type="button" data-consultation-sort="rank">Rank / role <span class="sort-indicator"></span></button></th>
+            <th class="num"><button class="sort-button" type="button" data-consultation-sort="email">Email <span class="sort-indicator"></span></button></th>
+            <th class="num"><button class="sort-button" type="button" data-consultation-sort="office">Office hours <span class="sort-indicator"></span></button></th>
+            <th class="num"><button class="sort-button" type="button" data-consultation-sort="live">Live <span class="sort-indicator"></span></button></th>
+            <th class="num"><button class="sort-button" type="button" data-consultation-sort="other">Other <span class="sort-indicator"></span></button></th>
+            <th class="num"><button class="sort-button" type="button" data-consultation-sort="hours">Hours <span class="sort-indicator"></span></button></th>
+            <th class="num"><button class="sort-button" type="button" data-consultation-sort="total">Total <span class="sort-indicator"></span></button></th>
           </tr>
         </thead>
         <tbody id="tbl-body"></tbody>
@@ -196,6 +204,9 @@ let filterOptions = {};
 let filtersState = {};
 let dateFilters = { start: '', end: '' };
 let openFilterId = null;
+let tableSearch = '';
+let tableSort = { key: 'total', direction: 'desc' };
+let currentClientTableRows = [];
 
 const FILTER_CONFIGS = [
   { id: 'f-semester', label: 'Semester', key: 'semester', allLabel: 'All semesters', emptyLabel: 'No semesters available', sort: sortSemesters },
@@ -626,6 +637,7 @@ function resetFilters() {
 //  RENDER
 // ===============================================
 function renderAll(rows) {
+  renderContext(rows);
   renderKPIs(rows);
   renderMonthlyChart(rows);
   renderChart('chart-category', topN(countBy(rows, 'category'), 10), 'doughnut');
@@ -636,6 +648,28 @@ function renderAll(rows) {
   renderChart('chart-staff', countBy(rows, 'initials'), 'bar');
   renderChart('chart-rank', topN(countBy(rows, 'rank'), 18), 'bar', true);
   renderTable(rows);
+}
+
+function renderContext(rows) {
+  const uniqueClients = new Set(rows.map(row => row.client).filter(client => client && client !== 'Unknown')).size;
+  const timedRows = rows.filter(row => row.minutes !== null);
+  const hours = timedRows.reduce((sum, row) => sum + row.minutes, 0) / 60;
+  const activeFilters = FILTER_CONFIGS.filter(config => filtersState[config.id]?.size).length;
+  const dateContext = dateFilters.start || dateFilters.end
+    ? `${dateFilters.start || 'start'} to ${dateFilters.end || 'latest'}`
+    : 'All dates';
+
+  const chips = [
+    `${rows.length.toLocaleString()} consultation records`,
+    `${uniqueClients.toLocaleString()} clients`,
+    `${hours.toFixed(1)} hours`,
+    dateContext,
+    activeFilters ? `${activeFilters} active filter${activeFilters === 1 ? '' : 's'}` : 'All filters clear'
+  ];
+
+  document.getElementById('data-context').innerHTML = chips
+    .map(chip => `<span class="context-chip">${escapeHtml(chip)}</span>`)
+    .join('');
 }
 
 function renderKPIs(rows) {
@@ -663,6 +697,99 @@ function countBy(rows, key) {
 function topN(obj, n) {
   return Object.fromEntries(Object.entries(obj).slice(0, n));
 }
+
+const barValueLabelsPlugin = {
+  id: 'barValueLabels',
+  afterDatasetsDraw(chart, args, pluginOptions) {
+    if (!pluginOptions?.display) return;
+    const labels = chart.data.labels || [];
+    if (labels.length > (pluginOptions.maxLabels || 18)) return;
+
+    const { ctx, chartArea } = chart;
+    const horizontal = chart.options.indexAxis === 'y';
+    ctx.save();
+    ctx.font = '700 11px Montserrat, Arial, sans-serif';
+    ctx.fillStyle = '#333333';
+    ctx.textBaseline = 'middle';
+
+    chart.data.datasets.forEach((dataset, datasetIndex) => {
+      const meta = chart.getDatasetMeta(datasetIndex);
+      if (meta.hidden) return;
+      meta.data.forEach((element, index) => {
+        const value = dataset.data[index];
+        if (!Number.isFinite(value) || value === 0) return;
+        const pos = element.tooltipPosition();
+        const label = Number(value).toLocaleString();
+        if (horizontal) {
+          ctx.textAlign = 'left';
+          const x = Math.min(pos.x + 7, chartArea.right - ctx.measureText(label).width);
+          ctx.fillText(label, x, pos.y);
+        } else {
+          ctx.textAlign = 'center';
+          const y = Math.max(pos.y - 9, chartArea.top + 8);
+          ctx.fillText(label, pos.x, y);
+        }
+      });
+    });
+    ctx.restore();
+  }
+};
+
+const doughnutCenterTextPlugin = {
+  id: 'doughnutCenterText',
+  afterDraw(chart, args, pluginOptions) {
+    if (!pluginOptions?.display) return;
+    const values = chart.data.datasets[0]?.data || [];
+    const total = values.reduce((sum, value) => sum + Number(value || 0), 0);
+    const meta = chart.getDatasetMeta(0);
+    if (!meta?.data?.length) return;
+    const { x, y } = meta.data[0];
+    const { ctx } = chart;
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#000000';
+    ctx.font = '700 22px Lato, Arial, sans-serif';
+    ctx.fillText(total.toLocaleString(), x, y - 7);
+    ctx.fillStyle = '#666666';
+    ctx.font = '600 11px Montserrat, Arial, sans-serif';
+    ctx.fillText('total', x, y + 13);
+    ctx.restore();
+  }
+};
+
+const stackedTotalLabelsPlugin = {
+  id: 'stackedTotalLabels',
+  afterDatasetsDraw(chart, args, pluginOptions) {
+    if (!pluginOptions?.display) return;
+    const labels = chart.data.labels || [];
+    if (labels.length > (pluginOptions.maxLabels || 48)) return;
+
+    const { ctx, chartArea } = chart;
+    ctx.save();
+    ctx.font = '700 10px Montserrat, Arial, sans-serif';
+    ctx.fillStyle = '#333333';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+
+    labels.forEach((label, index) => {
+      const visibleMetas = chart.data.datasets
+        .map((dataset, datasetIndex) => ({ dataset, meta: chart.getDatasetMeta(datasetIndex) }))
+        .filter(item => !item.meta.hidden);
+      const total = visibleMetas.reduce((sum, item) => sum + Number(item.dataset.data[index] || 0), 0);
+      if (!total) return;
+
+      const topElement = [...visibleMetas].reverse()
+        .map(item => item.meta.data[index])
+        .find(Boolean);
+      if (!topElement) return;
+      const pos = topElement.tooltipPosition();
+      ctx.fillText(total.toLocaleString(), pos.x, Math.max(pos.y - 6, chartArea.top + 8));
+    });
+    ctx.restore();
+  }
+};
 
 function renderMonthlyChart(rows) {
   const chartId = 'chart-monthly';
@@ -731,6 +858,10 @@ function renderMonthlyChart(rows) {
               return `Monthly total: ${total}`;
             }
           }
+        },
+        stackedTotalLabels: {
+          display: true,
+          maxLabels: 48
         }
       },
       scales: {
@@ -752,7 +883,7 @@ function renderMonthlyChart(rows) {
         }
       }
     },
-    plugins: [semesterBandsPlugin(months.map(month => monthMap[month].semester))]
+    plugins: [semesterBandsPlugin(months.map(month => monthMap[month].semester)), stackedTotalLabelsPlugin]
   });
 }
 
@@ -894,6 +1025,21 @@ function renderChart(id, data, type, horizontal = false) {
           bodyColor: '#333333',
           titleFont: { family: 'Lato', size: 12 },
           bodyFont: { family: 'Montserrat', size: 13 },
+          callbacks: {
+            label: context => {
+              const value = Number(context.raw || 0);
+              const total = context.dataset.data.reduce((sum, item) => sum + Number(item || 0), 0);
+              const pct = total ? ` (${Math.round((value / total) * 100)}%)` : '';
+              return `${context.label}: ${value.toLocaleString()}${isDoughnut ? pct : ''}`;
+            }
+          }
+        },
+        barValueLabels: {
+          display: !isDoughnut,
+          maxLabels: horizontal ? 24 : 16
+        },
+        doughnutCenterText: {
+          display: isDoughnut
         }
       },
       scales: isDoughnut ? {} : {
@@ -913,7 +1059,8 @@ function renderChart(id, data, type, horizontal = false) {
           beginAtZero: true
         }
       }
-    }
+    },
+    plugins: [barValueLabelsPlugin, doughnutCenterTextPlugin]
   });
 }
 
@@ -931,6 +1078,7 @@ function renderTable(rows) {
         live: 0,
         other: 0,
         minutes: 0,
+        hours: 0,
         total: 0
       };
     }
@@ -946,8 +1094,30 @@ function renderTable(rows) {
     if (clientMap[key].rank === 'Unknown' && row.rank !== 'Unknown') clientMap[key].rank = row.rank;
   });
 
-  const clients = Object.values(clientMap).sort((a, b) => b.total - a.total || a.client.localeCompare(b.client));
-  document.getElementById('tbl-count').textContent = clients.length + ' clients';
+  let clients = Object.values(clientMap).map(client => ({
+    ...client,
+    hours: client.minutes / 60
+  }));
+
+  const search = tableSearch.trim().toLowerCase();
+  if (search) {
+    clients = clients.filter(client => [
+      client.client,
+      client.dept,
+      client.rank,
+      String(client.email),
+      String(client.office),
+      String(client.live),
+      String(client.other),
+      client.hours.toFixed(1),
+      String(client.total)
+    ].some(value => String(value || '').toLowerCase().includes(search)));
+  }
+
+  clients.sort((a, b) => compareTableValues(a, b, tableSort.key, tableSort.direction));
+  currentClientTableRows = clients;
+  document.getElementById('tbl-count').textContent = `${clients.length} of ${Object.keys(clientMap).length} clients`;
+  updateConsultationSortIndicators();
 
   document.getElementById('tbl-body').innerHTML = clients.slice(0, 100).map(client => `
     <tr>
@@ -958,10 +1128,75 @@ function renderTable(rows) {
       <td class="num">${client.office || '-'}</td>
       <td class="num">${client.live || '-'}</td>
       <td class="num">${client.other || '-'}</td>
-      <td class="num">${client.minutes ? (client.minutes / 60).toFixed(1) : '-'}</td>
+      <td class="num"><span class="hours-badge ${client.hours >= 10 ? 'hours-high' : 'hours-normal'}">${client.hours ? client.hours.toFixed(1) : '-'}</span></td>
       <td class="num"><strong>${client.total}</strong></td>
     </tr>
   `).join('');
+}
+
+function compareTableValues(a, b, key, direction) {
+  const multiplier = direction === 'asc' ? 1 : -1;
+  const av = a[key];
+  const bv = b[key];
+
+  if (['email', 'office', 'live', 'other', 'hours', 'total'].includes(key)) {
+    return multiplier * (Number(av || 0) - Number(bv || 0));
+  }
+
+  return multiplier * String(av || '').localeCompare(String(bv || ''));
+}
+
+function updateConsultationSortIndicators() {
+  document.querySelectorAll('[data-consultation-sort]').forEach(button => {
+    const indicator = button.querySelector('.sort-indicator');
+    if (!indicator) return;
+    indicator.textContent = button.dataset.consultationSort === tableSort.key
+      ? (tableSort.direction === 'asc' ? '▲' : '▼')
+      : '';
+  });
+}
+
+function setConsultationSort(key) {
+  if (tableSort.key === key) {
+    tableSort.direction = tableSort.direction === 'asc' ? 'desc' : 'asc';
+  } else {
+    tableSort = { key, direction: ['client', 'dept', 'rank'].includes(key) ? 'asc' : 'desc' };
+  }
+  renderTable(getFiltered());
+}
+
+function exportConsultationTable() {
+  const header = ['Client', 'Department', 'Rank / role', 'Email', 'Office hours', 'Live', 'Other', 'Hours', 'Total'];
+  const rows = currentClientTableRows.map(row => [
+    row.client,
+    row.dept || '',
+    row.rank || '',
+    row.email || '',
+    row.office || '',
+    row.live || '',
+    row.other || '',
+    row.hours ? row.hours.toFixed(1) : '',
+    row.total
+  ]);
+  downloadCsv('lsl-consultation-clients.csv', [header, ...rows]);
+}
+
+function downloadCsv(filename, rows) {
+  const csv = rows.map(row => row.map(escapeCsvCell).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function escapeCsvCell(value) {
+  const text = String(value ?? '');
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 // ===============================================
@@ -995,6 +1230,19 @@ document.addEventListener('click', event => {
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape') closeFilterMenu();
 });
+
+document.getElementById('consultation-table-search').addEventListener('input', event => {
+  tableSearch = event.currentTarget.value;
+  renderTable(getFiltered());
+});
+
+document.querySelectorAll('[data-consultation-sort]').forEach(button => {
+  button.addEventListener('click', event => {
+    setConsultationSort(event.currentTarget.dataset.consultationSort);
+  });
+});
+
+document.getElementById('consultation-export').addEventListener('click', exportConsultationTable);
 
 function escapeHtml(value) {
   return String(value)
