@@ -605,6 +605,9 @@ function renderAttendanceChart(chartId, rows) {
   const metric = chartMetrics[chartId] || 'total';
   const subtitle = metric === 'average' ? config.averageSubtitle : config.totalSubtitle;
   let data = getAttendanceMetricData(rows, config.key, metric, config.sortLabels);
+  const centerMetric = config.type === 'doughnut' && metric === 'average'
+    ? getWeightedAverageAttendance(rows, config.key)
+    : null;
 
   if (config.limit) data = topN(data, config.limit);
 
@@ -612,7 +615,7 @@ function renderAttendanceChart(chartId, rows) {
     ? `${Object.keys(data).length.toLocaleString()} categories`
     : `${rows.length.toLocaleString()} attendees`;
   document.getElementById(config.subtitleId).textContent = `${subtitle} · ${subtitleContext}`;
-  renderChart(config.canvasId, data, config.type, config.horizontal, subtitle);
+  renderChart(config.canvasId, data, config.type, config.horizontal, subtitle, centerMetric);
 }
 
 function getAttendanceMetricData(rows, key, metric, labelComparator = null) {
@@ -637,6 +640,26 @@ function getAttendanceMetricData(rows, key, metric, labelComparator = null) {
     : (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 
   return Object.fromEntries(entries);
+}
+
+function getWeightedAverageAttendance(rows, key) {
+  const statsByLabel = {};
+  rows.forEach(row => {
+    const label = row[key] || 'Unknown';
+    if (!statsByLabel[label]) statsByLabel[label] = { attendees: 0, events: new Set() };
+    statsByLabel[label].attendees++;
+    statsByLabel[label].events.add(row.event + '|' + row.date);
+  });
+
+  const totals = Object.values(statsByLabel).reduce((summary, stats) => {
+    summary.attendees += stats.attendees;
+    summary.events += stats.events.size;
+    return summary;
+  }, { attendees: 0, events: 0 });
+
+  return totals.events
+    ? { value: Number((totals.attendees / totals.events).toFixed(1)), label: 'avg' }
+    : { value: 0, label: 'avg' };
 }
 
 function compareSemesters(a, b) {
@@ -718,7 +741,8 @@ const doughnutCenterTextPlugin = {
   afterDraw(chart, args, pluginOptions) {
     if (!pluginOptions?.display) return;
     const values = chart.data.datasets[0]?.data || [];
-    const total = values.reduce((sum, value) => sum + Number(value || 0), 0);
+    const centerValue = pluginOptions.value ?? values.reduce((sum, value) => sum + Number(value || 0), 0);
+    const centerLabel = pluginOptions.label || 'total';
     const meta = chart.getDatasetMeta(0);
     if (!meta?.data?.length) return;
     const { x, y } = meta.data[0];
@@ -729,15 +753,15 @@ const doughnutCenterTextPlugin = {
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#000000';
     ctx.font = '700 22px Lato, Arial, sans-serif';
-    ctx.fillText(total.toLocaleString(), x, y - 7);
+    ctx.fillText(centerValue.toLocaleString(), x, y - 7);
     ctx.fillStyle = '#666666';
     ctx.font = '600 11px Montserrat, Arial, sans-serif';
-    ctx.fillText('total', x, y + 13);
+    ctx.fillText(centerLabel, x, y + 13);
     ctx.restore();
   }
 };
 
-function renderChart(id, data, type, horizontal = false, datasetLabel = '') {
+function renderChart(id, data, type, horizontal = false, datasetLabel = '', centerMetric = null) {
   const labels = Object.keys(data);
   const values = Object.values(data);
   const colors = labels.map((_, i) => COLORS[i % COLORS.length]);
@@ -803,7 +827,9 @@ function renderChart(id, data, type, horizontal = false, datasetLabel = '') {
           maxLabels: horizontal ? 24 : 16
         },
         doughnutCenterText: {
-          display: isDoughnut
+          display: isDoughnut,
+          value: centerMetric?.value,
+          label: centerMetric?.label
         }
       },
       scales: isDoughnut ? {} : {
