@@ -1040,17 +1040,7 @@ function renderFacultyMixChart(rows) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: {
-          display: true,
-          position: 'bottom',
-          labels: {
-            color: '#333333',
-            font: { family: 'Montserrat', size: 11 },
-            boxWidth: 11,
-            padding: 12,
-            filter: item => datasets[item.datasetIndex]?.data.some(v => v > 0),
-          }
-        },
+        legend: { display: false },
         tooltip: {
           backgroundColor: '#ffffff',
           borderColor: '#dce0e9',
