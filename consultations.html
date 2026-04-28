@@ -106,7 +106,7 @@
     </div>
     <div class="chart-card">
       <div class="chart-title">Faculty mix</div>
-      <div class="chart-subtitle">Consultations by faculty type</div>
+      <div class="chart-subtitle">Adjunct, Clinical, Tenure/TT, and Other — broken down by rank</div>
       <div class="chart-wrap"><canvas id="chart-faculty-type"></canvas></div>
     </div>
   </div>
@@ -643,7 +643,7 @@ function renderAll(rows) {
   renderChart('chart-category', topN(countBy(rows, 'category'), 10), 'doughnut');
   renderChart('chart-type', countBy(rows, 'type'), 'bar');
   renderChart('chart-dept', topN(countBy(rows, 'dept'), 16), 'bar', true);
-  renderChart('chart-faculty-type', countBy(rows, 'facultyType'), 'doughnut');
+  renderFacultyMixChart(rows);
   renderChart('chart-status', countBy(rows, 'status'), 'bar');
   renderChart('chart-staff', countBy(rows, 'initials'), 'bar');
   renderChart('chart-rank', topN(countBy(rows, 'rank'), 18), 'bar', true);
@@ -977,6 +977,123 @@ function getSemesterBandLabel(ctx, label, maxWidth) {
 
 function midpoint(a, b) {
   return a + ((b - a) / 2);
+}
+
+const TENURE_RANKS = new Set(['Professor', 'Associate Professor', 'Assistant Professor']);
+
+function classifyFacultyGroup(row) {
+  const type = (row.facultyType || '').trim();
+  const rank = (row.rank || '').trim();
+  if (type === 'Adjunct') return 'Adjunct';
+  if (type === 'Full-time' && /clinical/i.test(rank)) return 'Clinical';
+  if (type === 'Full-time' && TENURE_RANKS.has(rank)) return 'Tenure/Tenure-Track';
+  return 'Other';
+}
+
+const FACULTY_MIX_GROUP_ORDER = ['Adjunct', 'Clinical', 'Tenure/Tenure-Track', 'Other'];
+
+function renderFacultyMixChart(rows) {
+  const chartId = 'chart-faculty-type';
+  if (charts[chartId]) charts[chartId].destroy();
+
+  // Collect rank breakdown per group
+  const groupRanks = {};
+  FACULTY_MIX_GROUP_ORDER.forEach(g => { groupRanks[g] = {}; });
+
+  rows.forEach(row => {
+    const group = classifyFacultyGroup(row);
+    const rank = (row.rank || '').trim() || 'No rank listed';
+    groupRanks[group][rank] = (groupRanks[group][rank] || 0) + 1;
+  });
+
+  // Collect all unique ranks across all groups, sorted by total desc
+  const rankTotals = {};
+  FACULTY_MIX_GROUP_ORDER.forEach(g => {
+    Object.entries(groupRanks[g]).forEach(([rank, count]) => {
+      rankTotals[rank] = (rankTotals[rank] || 0) + count;
+    });
+  });
+  const allRanks = Object.keys(rankTotals).sort((a, b) => rankTotals[b] - rankTotals[a]);
+
+  // One dataset per rank (stacked segment), each dataset has 4 values (one per group)
+  const datasets = allRanks.map((rank, i) => {
+    const baseColor = COLORS[i % COLORS.length];
+    return {
+      label: rank,
+      data: FACULTY_MIX_GROUP_ORDER.map(g => groupRanks[g][rank] || 0),
+      backgroundColor: baseColor + 'cc',
+      borderColor: baseColor,
+      borderWidth: 1,
+      borderRadius: 3,
+      stack: 'faculty',
+    };
+  });
+
+  const ctx = document.getElementById(chartId).getContext('2d');
+  charts[chartId] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: FACULTY_MIX_GROUP_ORDER,
+      datasets,
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            color: '#333333',
+            font: { family: 'Montserrat', size: 11 },
+            boxWidth: 11,
+            padding: 12,
+            filter: item => datasets[item.datasetIndex]?.data.some(v => v > 0),
+          }
+        },
+        tooltip: {
+          backgroundColor: '#ffffff',
+          borderColor: '#dce0e9',
+          borderWidth: 2,
+          titleColor: '#000000',
+          bodyColor: '#333333',
+          titleFont: { family: 'Lato', size: 12 },
+          bodyFont: { family: 'Montserrat', size: 13 },
+          callbacks: {
+            label: context => {
+              const value = Number(context.raw || 0);
+              if (!value) return null;
+              const groupIdx = context.dataIndex;
+              const groupTotal = datasets.reduce((s, ds) => s + Number(ds.data[groupIdx] || 0), 0);
+              const pct = groupTotal ? ` (${Math.round((value / groupTotal) * 100)}%)` : '';
+              return `${context.dataset.label}: ${value.toLocaleString()}${pct}`;
+            }
+          }
+        },
+        stackedTotalLabels: {
+          display: true,
+          maxLabels: 8,
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          grid: { color: '#dce0e9', drawBorder: false },
+          ticks: {
+            color: '#666666',
+            font: { family: 'Montserrat', size: 12 },
+          }
+        },
+        y: {
+          stacked: true,
+          grid: { color: '#dce0e9', drawBorder: false },
+          ticks: { color: '#666666', font: { family: 'Montserrat', size: 11 }, precision: 0 },
+          beginAtZero: true,
+        }
+      }
+    },
+    plugins: [stackedTotalLabelsPlugin],
+  });
 }
 
 function renderChart(id, data, type, horizontal = false) {
