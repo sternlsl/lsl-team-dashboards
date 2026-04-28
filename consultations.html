@@ -385,8 +385,8 @@ function parseSemester(date) {
   const month = date.getMonth() + 1;
   const year = date.getFullYear();
   if (month >= 1 && month <= 5) return `Spring ${year}`;
-  if (month >= 6 && month <= 7) return `Summer ${year}`;
-  if (month >= 8 && month <= 12) return `Fall ${year}`;
+  if (month >= 6 && month <= 8) return `Summer ${year}`;
+  if (month >= 9 && month <= 12) return `Fall ${year}`;
   return `${year}`;
 }
 
