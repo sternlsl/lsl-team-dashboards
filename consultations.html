@@ -100,13 +100,31 @@
 
   <div class="chart-grid">
     <div class="chart-card">
-      <div class="chart-title">Who we serve</div>
-      <div class="chart-subtitle">Top departments by consultation count</div>
+      <div class="chart-card-header">
+        <div class="chart-card-heading">
+          <div class="chart-title">Who we serve</div>
+          <div class="chart-subtitle" id="dept-chart-subtitle">Top departments by consultation count</div>
+        </div>
+        <label class="sr-only" for="dept-metric">Department metric</label>
+        <select class="chart-select" id="dept-metric">
+          <option value="consultations">Total consultations</option>
+          <option value="unique">Unique visitors</option>
+        </select>
+      </div>
       <div class="chart-wrap tall"><canvas id="chart-dept"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">Faculty mix</div>
-      <div class="chart-subtitle">Adjunct, Clinical, Tenure/TT, and Other — broken down by rank</div>
+      <div class="chart-card-header">
+        <div class="chart-card-heading">
+          <div class="chart-title">Faculty mix</div>
+          <div class="chart-subtitle" id="faculty-chart-subtitle">Adjunct, Clinical, Tenure/TT, and Other — by consultation count</div>
+        </div>
+        <label class="sr-only" for="faculty-metric">Faculty metric</label>
+        <select class="chart-select" id="faculty-metric">
+          <option value="consultations">Total consultations</option>
+          <option value="unique">Unique visitors</option>
+        </select>
+      </div>
       <div class="chart-wrap"><canvas id="chart-faculty-type"></canvas></div>
     </div>
   </div>
@@ -642,7 +660,7 @@ function renderAll(rows) {
   renderMonthlyChart(rows);
   renderChart('chart-category', topN(countBy(rows, 'category'), 10), 'doughnut');
   renderChart('chart-type', countBy(rows, 'type'), 'bar');
-  renderChart('chart-dept', topN(countBy(rows, 'dept'), 16), 'bar', true);
+  renderDeptChart(rows);
   renderFacultyMixChart(rows);
   renderChart('chart-status', countBy(rows, 'status'), 'bar');
   renderChart('chart-staff', countBy(rows, 'initials'), 'bar');
@@ -692,6 +710,19 @@ function countBy(rows, key) {
     m[value] = (m[value] || 0) + 1;
   });
   return Object.fromEntries(Object.entries(m).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])));
+}
+
+function countUniqueBy(rows, key) {
+  const m = {};
+  rows.forEach(r => {
+    const value = r[key] || 'Unknown';
+    if (!m[value]) m[value] = new Set();
+    const client = (r.client || '').trim();
+    if (client) m[value].add(client);
+  });
+  const counts = {};
+  Object.entries(m).forEach(([k, set]) => { counts[k] = set.size; });
+  return Object.fromEntries(Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])));
 }
 
 function topN(obj, n) {
@@ -979,6 +1010,19 @@ function midpoint(a, b) {
   return a + ((b - a) / 2);
 }
 
+function renderDeptChart(rows) {
+  const metric = document.getElementById('dept-metric').value;
+  const isUnique = metric === 'unique';
+  const data = isUnique
+    ? topN(countUniqueBy(rows, 'dept'), 16)
+    : topN(countBy(rows, 'dept'), 16);
+  const subtitle = isUnique
+    ? 'Top departments by unique visitors'
+    : 'Top departments by consultation count';
+  document.getElementById('dept-chart-subtitle').textContent = subtitle;
+  renderChart('chart-dept', data, 'bar', true);
+}
+
 const TENURE_RANKS = new Set(['Professor', 'Associate Professor', 'Assistant Professor']);
 
 function classifyFacultyGroup(row) {
@@ -996,15 +1040,37 @@ function renderFacultyMixChart(rows) {
   const chartId = 'chart-faculty-type';
   if (charts[chartId]) charts[chartId].destroy();
 
-  // Collect rank breakdown per group
+  const metric = document.getElementById('faculty-metric').value;
+  const isUnique = metric === 'unique';
+  const subtitle = isUnique
+    ? 'Adjunct, Clinical, Tenure/TT, and Other — by unique visitors'
+    : 'Adjunct, Clinical, Tenure/TT, and Other — by consultation count';
+  document.getElementById('faculty-chart-subtitle').textContent = subtitle;
+
+  // Collect rank breakdown per group (counts or unique client sets)
   const groupRanks = {};
   FACULTY_MIX_GROUP_ORDER.forEach(g => { groupRanks[g] = {}; });
 
   rows.forEach(row => {
     const group = classifyFacultyGroup(row);
     const rank = (row.rank || '').trim() || 'No rank listed';
-    groupRanks[group][rank] = (groupRanks[group][rank] || 0) + 1;
+    if (isUnique) {
+      if (!groupRanks[group][rank]) groupRanks[group][rank] = new Set();
+      const client = (row.client || '').trim();
+      if (client) groupRanks[group][rank].add(client);
+    } else {
+      groupRanks[group][rank] = (groupRanks[group][rank] || 0) + 1;
+    }
   });
+
+  // Resolve Sets to counts
+  if (isUnique) {
+    FACULTY_MIX_GROUP_ORDER.forEach(g => {
+      Object.keys(groupRanks[g]).forEach(rank => {
+        groupRanks[g][rank] = groupRanks[g][rank].size;
+      });
+    });
+  }
 
   // Collect all unique ranks across all groups, sorted by total desc
   const rankTotals = {};
@@ -1350,6 +1416,9 @@ document.querySelectorAll('[data-consultation-sort]').forEach(button => {
 });
 
 document.getElementById('consultation-export').addEventListener('click', exportConsultationTable);
+
+document.getElementById('dept-metric').addEventListener('change', () => renderDeptChart(getFiltered()));
+document.getElementById('faculty-metric').addEventListener('change', () => renderFacultyMixChart(getFiltered()));
 
 function escapeHtml(value) {
   return String(value)
