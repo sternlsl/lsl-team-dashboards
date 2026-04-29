@@ -449,6 +449,9 @@ function initializeFilters(rows) {
   filtersState = Object.fromEntries(
     FILTER_CONFIGS.map(config => [config.id, new Set()])
   );
+  if (filterOptions['f-affiliation']?.includes('Faculty')) {
+    filtersState['f-affiliation'].add('Faculty');
+  }
 
   renderFilterControls();
   attachFilterEvents();
@@ -646,6 +649,9 @@ function clearFilter(filterId) {
 
 function resetFilters() {
   FILTER_CONFIGS.forEach(config => filtersState[config.id].clear());
+  if (filterOptions['f-affiliation']?.includes('Faculty')) {
+    filtersState['f-affiliation'].add('Faculty');
+  }
   dateFilters = { start: '', end: '' };
   openFilterId = null;
   applyFilters();
