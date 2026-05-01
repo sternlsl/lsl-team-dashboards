@@ -1003,11 +1003,15 @@ select {
 }
 
 .table-search-group {
-  flex: 1 1 320px;
+  width: 100%;
   max-width: 520px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.table-tools .table-search-group {
+  flex: 1 1 320px;
 }
 
 .table-search-group label {
@@ -1269,6 +1273,16 @@ tr:hover td {
   .page-dashboard .chart-grid {
     grid-template-columns: 1fr;
   }
+
+  .page-workshop .dept-attendee-grid {
+    grid-template-rows: auto;
+  }
+
+  .page-workshop .attendee-tbl-wrap {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: 420px;
+  }
 }
 
 @media (max-width: 820px) {
@@ -1344,6 +1358,10 @@ tr:hover td {
 
   .table-search-group {
     max-width: none;
+  }
+
+  .table-tools .table-search-group {
+    flex: 0 1 auto;
   }
 
   .chart-card-header {
