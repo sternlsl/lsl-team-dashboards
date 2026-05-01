@@ -695,6 +695,7 @@ function renderSemesterStackedChart(rows) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: { padding: { top: 24 } },
       plugins: {
         legend: {
           display: true,
@@ -715,6 +716,10 @@ function renderSemesterStackedChart(rows) {
           }
         },
         barValueLabels: { display: false },
+        stackedTotalLabels: {
+          display: true,
+          maxLabels: 18
+        },
         doughnutCenterText: { display: false }
       },
       scales: {
@@ -731,7 +736,7 @@ function renderSemesterStackedChart(rows) {
         }
       }
     },
-    plugins: [barValueLabelsPlugin, doughnutCenterTextPlugin]
+    plugins: [barValueLabelsPlugin, stackedTotalLabelsPlugin, doughnutCenterTextPlugin]
   });
 }
 
@@ -848,6 +853,43 @@ const barValueLabelsPlugin = {
           ctx.fillText(label, pos.x, y);
         }
       });
+    });
+    ctx.restore();
+  }
+};
+
+const stackedTotalLabelsPlugin = {
+  id: 'stackedTotalLabels',
+  afterDatasetsDraw(chart, args, pluginOptions) {
+    if (!pluginOptions?.display) return;
+    const labels = chart.data.labels || [];
+    if (labels.length > (pluginOptions.maxLabels || 48)) return;
+
+    const { ctx, chartArea } = chart;
+    const visibleItems = chart.data.datasets
+      .map((dataset, datasetIndex) => ({ dataset, meta: chart.getDatasetMeta(datasetIndex) }))
+      .filter(item => !item.meta.hidden);
+
+    ctx.save();
+    ctx.font = '700 11px Montserrat, Arial, sans-serif';
+    ctx.fillStyle = '#333333';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+
+    labels.forEach((label, index) => {
+      const total = visibleItems.reduce((sum, item) => sum + Number(item.dataset.data[index] || 0), 0);
+      if (!total) return;
+
+      const topItem = [...visibleItems]
+        .reverse()
+        .find(item => Number(item.dataset.data[index] || 0) > 0 && item.meta.data[index]);
+      if (!topItem) return;
+
+      const pos = topItem.meta.data[index].tooltipPosition();
+      const formattedTotal = Number.isInteger(total)
+        ? total.toLocaleString()
+        : total.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+      ctx.fillText(formattedTotal, pos.x, Math.max(pos.y - 7, chartArea.top + 10));
     });
     ctx.restore();
   }
