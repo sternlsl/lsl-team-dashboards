@@ -138,8 +138,8 @@
     </div>
   </div>
 
-  <!-- ROW 3: Department bar (full width) -->
-  <div class="chart-grid full">
+  <!-- ROW 3: Department + Attendee breakdown -->
+  <div class="chart-grid dept-attendee-grid">
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-heading">
@@ -153,6 +153,32 @@
         </select>
       </div>
       <div class="chart-wrap tall"><canvas id="chart-dept"></canvas></div>
+    </div>
+
+    <div class="chart-card attendee-table-section">
+      <div class="chart-card-header">
+        <div class="chart-card-heading">
+          <div class="chart-title">Attendee breakdown</div>
+          <div class="chart-subtitle" id="attendee-tbl-count">— attendees</div>
+        </div>
+        <button id="attendee-export" class="export-btn" type="button">Export CSV</button>
+      </div>
+      <div class="table-search-group">
+        <label for="attendee-table-search" class="sr-only">Search attendees</label>
+        <input id="attendee-table-search" class="table-search" type="search" placeholder="Search by name..." />
+      </div>
+      <div class="tbl-wrap attendee-tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th><button class="sort-button" type="button" data-attendee-sort="name">Name <span class="sort-indicator"></span></button></th>
+              <th><button class="sort-button" type="button" data-attendee-sort="attended">Attended <span class="sort-indicator">▼</span></button></th>
+              <th><button class="sort-button" type="button" data-attendee-sort="rsvpd">RSVPs <span class="sort-indicator"></span></button></th>
+            </tr>
+          </thead>
+          <tbody id="attendee-tbl-body"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -183,33 +209,6 @@
           </tr>
         </thead>
         <tbody id="tbl-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- TABLE: Attendee breakdown -->
-  <div class="table-section attendee-table-section">
-    <div class="table-header">
-      <h2>Attendee breakdown</h2>
-      <span id="attendee-tbl-count">— attendees</span>
-    </div>
-    <div class="table-tools">
-      <div class="table-search-group">
-        <label for="attendee-table-search">Search attendees</label>
-        <input id="attendee-table-search" class="table-search" type="search" placeholder="Search by name..." />
-      </div>
-      <button id="attendee-export" class="export-btn" type="button">Export CSV</button>
-    </div>
-    <div class="tbl-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th><button class="sort-button" type="button" data-attendee-sort="name">Name <span class="sort-indicator"></span></button></th>
-            <th><button class="sort-button" type="button" data-attendee-sort="attended">Attended <span class="sort-indicator">▼</span></button></th>
-            <th><button class="sort-button" type="button" data-attendee-sort="rsvpd">RSVPs <span class="sort-indicator"></span></button></th>
-          </tr>
-        </thead>
-        <tbody id="attendee-tbl-body"></tbody>
       </table>
     </div>
   </div>

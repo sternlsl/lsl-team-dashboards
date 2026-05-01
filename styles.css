@@ -936,6 +936,16 @@ select {
   height: 360px;
 }
 
+.dept-attendee-grid {
+  grid-template-columns: 3fr 2fr;
+  align-items: start;
+}
+
+.attendee-tbl-wrap {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
 .chart-wrap.timeline {
   height: 460px;
 }
