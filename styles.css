@@ -938,12 +938,18 @@ select {
 
 .dept-attendee-grid {
   grid-template-columns: 3fr 2fr;
-  align-items: start;
+  align-items: stretch;
+}
+
+.dept-attendee-grid .attendee-table-section {
+  display: flex;
+  flex-direction: column;
 }
 
 .attendee-tbl-wrap {
-  max-height: 360px;
+  flex: 1;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .chart-wrap.timeline {
