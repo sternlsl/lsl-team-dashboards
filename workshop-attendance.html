@@ -386,6 +386,7 @@ function processData(values) {
   const iRsvp         = idx("RSVP'd");
   const iAttend       = idx('Attended');
   const iFacultyRank  = idx('Faculty Rank (if applicable)');
+  const iFacultyType  = idx('Faculty Type');
   // Try common column names for the attendee's name
   const iAttendeeName = ['Name', 'Attendee Name', 'Full Name', 'Client', 'Attendee'].reduce(
     (found, col) => found >= 0 ? found : idx(col), -1
@@ -399,6 +400,7 @@ function processData(values) {
     affil:        (row[iAffil]       || '').trim(),
     dept:         (row[iDept]        || '').trim(),
     facultyRank:  iFacultyRank >= 0  ? (row[iFacultyRank]  || '').trim() : '',
+    facultyType:  iFacultyType >= 0  ? (row[iFacultyType]  || '').trim() : '',
     attendeeName: iAttendeeName >= 0 ? (row[iAttendeeName] || '').trim() : '',
     rsvpd:        (row[iRsvp]        || '').trim().toLowerCase() === 'yes',
     attended:     (row[iAttend]      || '').trim().toLowerCase() === 'yes',
@@ -622,7 +624,7 @@ function renderContext(rows) {
 function renderAttendanceChart(chartId, rows) {
   const config = ATTENDANCE_CHARTS[chartId];
   const filteredRows = chartId === 'faculty'
-    ? rows.filter(r => r.facultyRank)
+    ? rows.filter(r => r.facultyType === 'Full-time' || r.facultyType === 'Adjunct')
     : rows;
   const metric = chartMetrics[chartId] || 'total';
   const subtitle = metric === 'average' ? config.averageSubtitle : config.totalSubtitle;
