@@ -950,7 +950,7 @@ select {
 .attendee-tbl-wrap {
   flex: 1;
   overflow-y: auto;
-  min-height: 0;
+  min-height: 300px;
 }
 
 .chart-wrap.timeline {
