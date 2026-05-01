@@ -88,54 +88,26 @@
     </div>
   </div>
 
-  <!-- ROW 1: Semester + Tag -->
-  <div class="chart-grid">
+  <!-- ROW 1: Semester stacked (full width) -->
+  <div class="chart-grid full">
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-heading">
           <div class="chart-title">Attendance by semester</div>
-          <div class="chart-subtitle" id="semester-chart-subtitle">Actual attendees only</div>
+          <div class="chart-subtitle" id="semester-chart-subtitle">Stacked by event type</div>
         </div>
         <label class="sr-only" for="semester-metric">Semester attendance metric</label>
         <select class="chart-select" id="semester-metric" data-attendance-metric="semester">
+          <option value="average" selected>Average per workshop</option>
           <option value="total">Total attendance</option>
-          <option value="average">Average per workshop</option>
         </select>
       </div>
       <div class="chart-wrap"><canvas id="chart-semester"></canvas></div>
     </div>
-    <div class="chart-card">
-      <div class="chart-card-header">
-        <div class="chart-card-heading">
-          <div class="chart-title">Attendance by subject tag</div>
-          <div class="chart-subtitle" id="tag-chart-subtitle">Workshop topic area</div>
-        </div>
-        <label class="sr-only" for="tag-metric">Subject tag attendance metric</label>
-        <select class="chart-select" id="tag-metric" data-attendance-metric="tag">
-          <option value="total">Total attendance</option>
-          <option value="average">Average per workshop</option>
-        </select>
-      </div>
-      <div class="chart-wrap"><canvas id="chart-tag"></canvas></div>
-    </div>
   </div>
 
-  <!-- ROW 2: Type + Department -->
+  <!-- ROW 2: Affiliation + Faculty rank -->
   <div class="chart-grid">
-    <div class="chart-card">
-      <div class="chart-card-header">
-        <div class="chart-card-heading">
-          <div class="chart-title">Attendance by event type</div>
-          <div class="chart-subtitle" id="type-chart-subtitle">Bootcamp, workshop, etc.</div>
-        </div>
-        <label class="sr-only" for="type-metric">Event type attendance metric</label>
-        <select class="chart-select" id="type-metric" data-attendance-metric="type">
-          <option value="total">Total attendance</option>
-          <option value="average">Average per workshop</option>
-        </select>
-      </div>
-      <div class="chart-wrap"><canvas id="chart-type"></canvas></div>
-    </div>
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-heading">
@@ -144,11 +116,25 @@
         </div>
         <label class="sr-only" for="affiliation-metric">Affiliation attendance metric</label>
         <select class="chart-select" id="affiliation-metric" data-attendance-metric="affiliation">
+          <option value="average" selected>Average per workshop</option>
           <option value="total">Total attendance</option>
-          <option value="average">Average per workshop</option>
         </select>
       </div>
       <div class="chart-wrap"><canvas id="chart-affiliation"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-heading">
+          <div class="chart-title">Faculty attendance breakdown</div>
+          <div class="chart-subtitle" id="faculty-chart-subtitle">By faculty rank</div>
+        </div>
+        <label class="sr-only" for="faculty-metric">Faculty rank attendance metric</label>
+        <select class="chart-select" id="faculty-metric" data-attendance-metric="faculty">
+          <option value="average" selected>Average per workshop</option>
+          <option value="total">Total attendance</option>
+        </select>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-faculty"></canvas></div>
     </div>
   </div>
 
@@ -162,15 +148,15 @@
         </div>
         <label class="sr-only" for="dept-metric">Department attendance metric</label>
         <select class="chart-select" id="dept-metric" data-attendance-metric="dept">
+          <option value="average" selected>Average per workshop</option>
           <option value="total">Total attendance</option>
-          <option value="average">Average per workshop</option>
         </select>
       </div>
       <div class="chart-wrap tall"><canvas id="chart-dept"></canvas></div>
     </div>
   </div>
 
-  <!-- TABLE -->
+  <!-- TABLE: Workshop breakdown -->
   <div class="table-section">
     <div class="table-header">
       <h2>Workshop breakdown</h2>
@@ -201,6 +187,33 @@
     </div>
   </div>
 
+  <!-- TABLE: Attendee breakdown -->
+  <div class="table-section attendee-table-section">
+    <div class="table-header">
+      <h2>Attendee breakdown</h2>
+      <span id="attendee-tbl-count">— attendees</span>
+    </div>
+    <div class="table-tools">
+      <div class="table-search-group">
+        <label for="attendee-table-search">Search attendees</label>
+        <input id="attendee-table-search" class="table-search" type="search" placeholder="Search by name..." />
+      </div>
+      <button id="attendee-export" class="export-btn" type="button">Export CSV</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th><button class="sort-button" type="button" data-attendee-sort="name">Name <span class="sort-indicator"></span></button></th>
+            <th><button class="sort-button" type="button" data-attendee-sort="attended">Attended <span class="sort-indicator">▼</span></button></th>
+            <th><button class="sort-button" type="button" data-attendee-sort="rsvpd">RSVPs <span class="sort-indicator"></span></button></th>
+          </tr>
+        </thead>
+        <tbody id="attendee-tbl-body"></tbody>
+      </table>
+    </div>
+  </div>
+
 </div><!-- /dashboard -->
 
 <script>
@@ -220,6 +233,13 @@ const COLORS = [
   '#5cd5ca', '#005e57', '#89e5da', '#3cbfb4'
 ];
 
+const TYPE_COLORS = {
+  Bootcamp: '#10998c',
+  Workshop: '#1db8aa',
+  Seminar:  '#007d73',
+  Webinar:  '#5cd5ca',
+};
+
 // ═══════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════
@@ -235,12 +255,15 @@ let tableSearch = '';
 let tableSort = { key: 'attended', direction: 'desc' };
 let currentWorkshopTableRows = [];
 let chartMetrics = {
-  semester: 'total',
-  tag: 'total',
-  type: 'total',
-  affiliation: 'total',
-  dept: 'total'
+  semester:    'average',
+  affiliation: 'average',
+  faculty:     'average',
+  dept:        'average'
 };
+
+let attendeeTableSearch = '';
+let attendeeTableSort = { key: 'attended', direction: 'desc' };
+let currentAttendeeTableRows = [];
 
 const FILTER_CONFIGS = [
   { id: 'f-semester', label: 'Semester', key: 'semester', allLabel: 'All semesters', emptyLabel: 'No semesters available' },
@@ -251,31 +274,6 @@ const FILTER_CONFIGS = [
 ];
 
 const ATTENDANCE_CHARTS = {
-  semester: {
-    canvasId: 'chart-semester',
-    subtitleId: 'semester-chart-subtitle',
-    key: 'semester',
-    type: 'bar',
-    totalSubtitle: 'Actual attendees only',
-    averageSubtitle: 'Average actual attendees per workshop',
-    sortLabels: compareSemesters
-  },
-  tag: {
-    canvasId: 'chart-tag',
-    subtitleId: 'tag-chart-subtitle',
-    key: 'tag',
-    type: 'doughnut',
-    totalSubtitle: 'Workshop topic area',
-    averageSubtitle: 'Average attendees per workshop by topic area'
-  },
-  type: {
-    canvasId: 'chart-type',
-    subtitleId: 'type-chart-subtitle',
-    key: 'type',
-    type: 'doughnut',
-    totalSubtitle: 'Bootcamp, workshop, etc.',
-    averageSubtitle: 'Average attendees per workshop by event type'
-  },
   affiliation: {
     canvasId: 'chart-affiliation',
     subtitleId: 'affiliation-chart-subtitle',
@@ -283,6 +281,15 @@ const ATTENDANCE_CHARTS = {
     type: 'bar',
     totalSubtitle: 'Faculty, staff, student…',
     averageSubtitle: 'Average attendees per workshop by affiliation'
+  },
+  faculty: {
+    canvasId: 'chart-faculty',
+    subtitleId: 'faculty-chart-subtitle',
+    key: 'facultyRank',
+    type: 'bar',
+    horizontal: true,
+    totalSubtitle: 'By faculty rank',
+    averageSubtitle: 'Average faculty attendees per workshop by rank'
   },
   dept: {
     canvasId: 'chart-dept',
@@ -370,25 +377,32 @@ function processData(values) {
   const headers = values[0].map(h => h.trim());
   const idx = h => headers.indexOf(h);
 
-  const iDate    = idx('Date');
-  const iName    = idx('Event Name');
-  const iTag     = idx('Tag');
-  const iType    = idx('Type');
-  const iAffil   = idx('Affiliation');
-  const iDept    = idx('Department');
-  const iRsvp    = idx("RSVP'd");
-  const iAttend  = idx('Attended');
+  const iDate         = idx('Date');
+  const iName         = idx('Event Name');
+  const iTag          = idx('Tag');
+  const iType         = idx('Type');
+  const iAffil        = idx('Affiliation');
+  const iDept         = idx('Department');
+  const iRsvp         = idx("RSVP'd");
+  const iAttend       = idx('Attended');
+  const iFacultyRank  = idx('Faculty Rank (if applicable)');
+  // Try common column names for the attendee's name
+  const iAttendeeName = ['Name', 'Attendee Name', 'Full Name', 'Client', 'Attendee'].reduce(
+    (found, col) => found >= 0 ? found : idx(col), -1
+  );
 
   const parse = row => ({
-    date:      (row[iDate]   || '').trim(),
-    event:     (row[iName]   || '').trim(),
-    tag:       (row[iTag]    || '').trim(),
-    type:      (row[iType]   || '').trim(),
-    affil:     (row[iAffil]  || '').trim(),
-    dept:      (row[iDept]   || '').trim(),
-    rsvpd:     (row[iRsvp]   || '').trim().toLowerCase() === 'yes',
-    attended:  (row[iAttend] || '').trim().toLowerCase() === 'yes',
-    semester:  parseSemester((row[iDate] || '').trim()),
+    date:         (row[iDate]        || '').trim(),
+    event:        (row[iName]        || '').trim(),
+    tag:          (row[iTag]         || '').trim(),
+    type:         (row[iType]        || '').trim(),
+    affil:        (row[iAffil]       || '').trim(),
+    dept:         (row[iDept]        || '').trim(),
+    facultyRank:  iFacultyRank >= 0  ? (row[iFacultyRank]  || '').trim() : '',
+    attendeeName: iAttendeeName >= 0 ? (row[iAttendeeName] || '').trim() : '',
+    rsvpd:        (row[iRsvp]        || '').trim().toLowerCase() === 'yes',
+    attended:     (row[iAttend]      || '').trim().toLowerCase() === 'yes',
+    semester:     parseSemester((row[iDate] || '').trim()),
   });
 
   const dataRows = values.slice(1).map(parse).filter(r => r.event);
@@ -587,8 +601,10 @@ function resetFilters() {
 function renderAll(rows) {
   renderContext(rows);
   renderKPIs(rows);
+  renderSemesterStackedChart(rows);
   Object.keys(ATTENDANCE_CHARTS).forEach(chartId => renderAttendanceChart(chartId, rows));
   renderTable(rows);
+  renderAttendeeTable(rows);
 }
 
 function renderContext(rows) {
@@ -605,20 +621,117 @@ function renderContext(rows) {
 
 function renderAttendanceChart(chartId, rows) {
   const config = ATTENDANCE_CHARTS[chartId];
+  const filteredRows = chartId === 'faculty'
+    ? rows.filter(r => r.facultyRank)
+    : rows;
   const metric = chartMetrics[chartId] || 'total';
   const subtitle = metric === 'average' ? config.averageSubtitle : config.totalSubtitle;
-  let data = getAttendanceMetricData(rows, config.key, metric, config.sortLabels);
-  const centerMetric = config.type === 'doughnut' && metric === 'average'
-    ? getWeightedAverageAttendance(rows, config.key)
-    : null;
+  let data = getAttendanceMetricData(filteredRows, config.key, metric, config.sortLabels);
 
   if (config.limit) data = topN(data, config.limit);
 
   const subtitleContext = metric === 'average'
     ? `${Object.keys(data).length.toLocaleString()} categories`
-    : `${rows.length.toLocaleString()} attendees`;
+    : `${filteredRows.length.toLocaleString()} attendees`;
   document.getElementById(config.subtitleId).textContent = `${subtitle} · ${subtitleContext}`;
-  renderChart(config.canvasId, data, config.type, config.horizontal, subtitle, centerMetric);
+  renderChart(config.canvasId, data, config.type, config.horizontal, subtitle);
+}
+
+function renderSemesterStackedChart(rows) {
+  const metric = chartMetrics.semester || 'average';
+
+  // Collect all types and semesters
+  const typesSet = new Set();
+  const semestersSet = new Set();
+  rows.forEach(r => {
+    typesSet.add(r.type || 'Other');
+    semestersSet.add(r.semester);
+  });
+
+  const semesters = [...semestersSet].sort(compareSemesters);
+  const types = [...typesSet].sort();
+
+  // For each type: map semester -> attendees or avg
+  // We need per-event counts per (semester, type) for averages
+  const stats = {}; // stats[semester][type] = { attendees, events: Set }
+  semesters.forEach(s => { stats[s] = {}; });
+  rows.forEach(r => {
+    const s = r.semester;
+    const t = r.type || 'Other';
+    if (!stats[s][t]) stats[s][t] = { attendees: 0, events: new Set() };
+    stats[s][t].attendees++;
+    stats[s][t].events.add(r.event + '|' + r.date);
+  });
+
+  const datasets = types.map((type, i) => {
+    const color = TYPE_COLORS[type] || COLORS[i % COLORS.length];
+    return {
+      label: type,
+      data: semesters.map(s => {
+        const cell = stats[s]?.[type];
+        if (!cell) return 0;
+        if (metric === 'average') return Number((cell.attendees / cell.events.size).toFixed(1));
+        return cell.attendees;
+      }),
+      backgroundColor: color + 'cc',
+      borderColor: color,
+      borderWidth: 1,
+      borderRadius: 2,
+    };
+  });
+
+  if (charts['semester']) charts['semester'].destroy();
+
+  const subtitleText = metric === 'average'
+    ? `Average attendees per workshop by type · ${semesters.length} semesters`
+    : `Total attendees by type · ${rows.length.toLocaleString()} attendees`;
+  document.getElementById('semester-chart-subtitle').textContent = subtitleText;
+
+  const ctx = document.getElementById('chart-semester').getContext('2d');
+  charts['semester'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: semesters, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: { color: '#333333', font: { family: 'Montserrat', size: 12 }, boxWidth: 12, padding: 14 }
+        },
+        tooltip: {
+          backgroundColor: '#ffffff',
+          borderColor: '#dce0e9',
+          borderWidth: 2,
+          titleColor: '#000000',
+          bodyColor: '#333333',
+          titleFont: { family: 'Lato', size: 12 },
+          bodyFont: { family: 'Montserrat', size: 13 },
+          mode: 'index',
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${Number(ctx.raw || 0).toLocaleString()}`
+          }
+        },
+        barValueLabels: { display: false },
+        doughnutCenterText: { display: false }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          grid: { display: false },
+          ticks: { color: '#666666', font: { family: 'Montserrat', size: 11 }, maxRotation: 40 }
+        },
+        y: {
+          stacked: true,
+          grid: { display: false },
+          ticks: { color: '#666666', font: { family: 'Montserrat', size: 11 } },
+          beginAtZero: true
+        }
+      }
+    },
+    plugins: [barValueLabelsPlugin, doughnutCenterTextPlugin]
+  });
 }
 
 function getAttendanceMetricData(rows, key, metric, labelComparator = null) {
@@ -911,6 +1024,76 @@ function renderTable(rows) {
   }).join('');
 }
 
+function renderAttendeeTable(rows) {
+  const attendeeMap = {};
+  rows.forEach(r => {
+    const name = r.attendeeName;
+    if (!name) return;
+    if (!attendeeMap[name]) attendeeMap[name] = { name, attended: 0, rsvpd: 0 };
+    attendeeMap[name].attended++;
+  });
+
+  // Count RSVPs for matched names
+  getRowsMatchingFiltersFrom(allRsvpRows).forEach(r => {
+    const name = r.attendeeName;
+    if (!name || !attendeeMap[name]) return;
+    attendeeMap[name].rsvpd++;
+  });
+
+  // If no name column exists in the sheet, hide the section gracefully
+  if (!Object.keys(attendeeMap).length) {
+    document.querySelector('.attendee-table-section').style.display = 'none';
+    return;
+  }
+  document.querySelector('.attendee-table-section').style.display = '';
+
+  const search = attendeeTableSearch.trim().toLowerCase();
+  let attendees = Object.values(attendeeMap);
+
+  if (search) {
+    attendees = attendees.filter(a =>
+      String(a.name || '').toLowerCase().includes(search)
+    );
+  }
+
+  attendees.sort((a, b) => compareTableValues(a, b, attendeeTableSort.key, attendeeTableSort.direction));
+  currentAttendeeTableRows = attendees;
+
+  document.getElementById('attendee-tbl-count').textContent = `${attendees.length} attendees`;
+  updateAttendeeSortIndicators();
+
+  document.getElementById('attendee-tbl-body').innerHTML = attendees.map(a => `<tr>
+    <td>${escapeHtml(a.name)}</td>
+    <td><strong>${a.attended}</strong></td>
+    <td>${a.rsvpd || '—'}</td>
+  </tr>`).join('');
+}
+
+function updateAttendeeSortIndicators() {
+  document.querySelectorAll('[data-attendee-sort]').forEach(button => {
+    const indicator = button.querySelector('.sort-indicator');
+    if (!indicator) return;
+    indicator.textContent = button.dataset.attendeeSort === attendeeTableSort.key
+      ? (attendeeTableSort.direction === 'asc' ? '▲' : '▼')
+      : '';
+  });
+}
+
+function setAttendeeSort(key) {
+  if (attendeeTableSort.key === key) {
+    attendeeTableSort.direction = attendeeTableSort.direction === 'asc' ? 'desc' : 'asc';
+  } else {
+    attendeeTableSort = { key, direction: key === 'name' ? 'asc' : 'desc' };
+  }
+  renderAttendeeTable(getFiltered());
+}
+
+function exportAttendeeTable() {
+  const header = ['Name', 'Attended', 'RSVPs'];
+  const rows = currentAttendeeTableRows.map(row => [row.name, row.attended, row.rsvpd || '']);
+  downloadCsv('lsl-attendee-breakdown.csv', [header, ...rows]);
+}
+
 function compareTableValues(a, b, key, direction) {
   const multiplier = direction === 'asc' ? 1 : -1;
   const av = a[key];
@@ -1030,7 +1213,11 @@ document.querySelectorAll('[data-attendance-metric]').forEach(select => {
   select.addEventListener('change', event => {
     const chartId = event.currentTarget.dataset.attendanceMetric;
     chartMetrics[chartId] = event.currentTarget.value;
-    renderAttendanceChart(chartId, getFiltered());
+    if (chartId === 'semester') {
+      renderSemesterStackedChart(getFiltered());
+    } else {
+      renderAttendanceChart(chartId, getFiltered());
+    }
   });
 });
 
@@ -1046,6 +1233,19 @@ document.querySelectorAll('[data-workshop-sort]').forEach(button => {
 });
 
 document.getElementById('workshop-export').addEventListener('click', exportWorkshopTable);
+
+document.getElementById('attendee-table-search').addEventListener('input', event => {
+  attendeeTableSearch = event.currentTarget.value;
+  renderAttendeeTable(getFiltered());
+});
+
+document.querySelectorAll('[data-attendee-sort]').forEach(button => {
+  button.addEventListener('click', event => {
+    setAttendeeSort(event.currentTarget.dataset.attendeeSort);
+  });
+});
+
+document.getElementById('attendee-export').addEventListener('click', exportAttendeeTable);
 
 function escapeHtml(value) {
   return String(value)
