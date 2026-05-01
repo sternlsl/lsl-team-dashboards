@@ -465,14 +465,80 @@ select {
 #filters {
   max-width: var(--max-width);
   margin: 28px auto 0;
-  display: flex;
-  gap: 12px;
-  padding: 16px;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+}
+
+.filters-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  border-radius: var(--radius);
+  transition: background-color .15s ease;
+}
+
+.filters-toggle:hover {
+  background: rgba(16, 153, 140, 0.04);
+}
+
+.filters-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filters-toggle-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.filters-active-badge {
+  display: none;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(16, 153, 140, 0.12);
+  color: var(--teal-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.filters-active-badge.visible {
+  display: inline-flex;
+}
+
+.filters-toggle-chevron {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: var(--muted);
+  transition: transform .2s ease;
+}
+
+#filters.filters-open .filters-toggle-chevron {
+  transform: rotate(180deg);
+}
+
+.filters-body {
+  display: none;
+  padding: 0 16px 16px;
+  gap: 12px;
   align-items: flex-start;
+}
+
+#filters.filters-open .filters-body {
+  display: flex;
 }
 
 .filters-list {
@@ -1226,7 +1292,10 @@ tr:hover td {
 
   #filters {
     margin: 20px 20px 0;
-    padding: 18px;
+  }
+
+  .filters-body {
+    padding: 0 18px 18px;
     flex-direction: column;
   }
 

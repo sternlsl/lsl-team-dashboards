@@ -11,7 +11,7 @@
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-<link rel="stylesheet" href="styles.css?v=20260425-1" />
+<link rel="stylesheet" href="styles.css?v=20260501-1" />
 </head>
 <body class="page-dashboard page-workshop" data-ui-state="landing">
 
@@ -51,10 +51,18 @@
 
   <!-- FILTERS -->
   <div id="filters">
-    <div id="filters-list" class="filters-list"></div>
-    <button id="reset-btn" onclick="resetFilters()">Reset</button>
+    <button class="filters-toggle" id="filters-toggle" aria-expanded="false" aria-controls="filters-body" type="button">
+      <span class="filters-toggle-left">
+        <span class="filters-toggle-label">Filters</span>
+        <span class="filters-active-badge" id="filters-active-badge"></span>
+      </span>
+      <svg class="filters-toggle-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6l5 5 5-5"/></svg>
+    </button>
+    <div class="filters-body" id="filters-body">
+      <div id="filters-list" class="filters-list"></div>
+      <button id="reset-btn" onclick="resetFilters()">Reset</button>
+    </div>
   </div>
-  <div id="data-context" class="data-context" aria-live="polite"></div>
 
   <!-- KPIs -->
   <div class="kpi-row">
@@ -208,8 +216,8 @@ const SCOPE       = 'https://www.googleapis.com/auth/spreadsheets.readonly';
 //  PALETTE
 // ═══════════════════════════════════════════════
 const COLORS = [
-  '#10998c', '#41b0e7', '#6c6cb4', '#00b5a8',
-  '#189ccd', '#525299', '#89e5da', '#71cce1'
+  '#10998c', '#1db8aa', '#00d4c4', '#007d73',
+  '#5cd5ca', '#005e57', '#89e5da', '#3cbfb4'
 ];
 
 // ═══════════════════════════════════════════════
@@ -584,20 +592,15 @@ function renderAll(rows) {
 }
 
 function renderContext(rows) {
-  const events = new Set(rows.map(r => r.event + '|' + r.date)).size;
-  const activeFilters = FILTER_CONFIGS
-    .filter(config => filtersState[config.id]?.size)
-    .map(config => `${config.label}: ${[...filtersState[config.id]].join(', ')}`);
-
-  const chips = [
-    `${rows.length.toLocaleString()} attendee records`,
-    `${events.toLocaleString()} workshops`,
-    activeFilters.length ? `${activeFilters.length} active filter${activeFilters.length === 1 ? '' : 's'}` : 'All filters clear'
-  ];
-
-  document.getElementById('data-context').innerHTML = chips
-    .map(chip => `<span class="context-chip">${escapeHtml(chip)}</span>`)
-    .join('');
+  const activeFilters = FILTER_CONFIGS.filter(config => filtersState[config.id]?.size).length;
+  const badge = document.getElementById('filters-active-badge');
+  if (activeFilters) {
+    badge.textContent = `${activeFilters} active`;
+    badge.classList.add('visible');
+  } else {
+    badge.textContent = '';
+    badge.classList.remove('visible');
+  }
 }
 
 function renderAttendanceChart(chartId, rows) {
@@ -834,12 +837,12 @@ function renderChart(id, data, type, horizontal = false, datasetLabel = '', cent
       },
       scales: isDoughnut ? {} : {
         x: {
-          grid:  { color: '#dce0e9', drawBorder: false },
+          grid:  { display: false },
           ticks: { color: '#666666', font: { family: 'Montserrat', size: 11 },
                    maxRotation: horizontal ? 0 : 40 }
         },
         y: {
-          grid:  { color: '#dce0e9', drawBorder: false },
+          grid:  { display: false },
           ticks: { color: '#666666', font: { family: 'Montserrat', size: 11 } },
           beginAtZero: true
         }
@@ -1007,6 +1010,13 @@ function showError(msg) {
   el.classList.add('is-visible');
   el.textContent   = 'Notice: ' + msg;
 }
+
+document.getElementById('filters-toggle').addEventListener('click', () => {
+  const filtersEl = document.getElementById('filters');
+  const toggle = document.getElementById('filters-toggle');
+  const isOpen = filtersEl.classList.toggle('filters-open');
+  toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+});
 
 document.addEventListener('click', event => {
   if (!event.target.closest('.filter-group')) closeFilterMenu();

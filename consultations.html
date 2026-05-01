@@ -11,7 +11,7 @@
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-<link rel="stylesheet" href="styles.css?v=20260425-1" />
+<link rel="stylesheet" href="styles.css?v=20260501-1" />
 </head>
 <body class="page-dashboard page-consultations" data-ui-state="landing">
 
@@ -44,10 +44,18 @@
 
 <div id="dashboard">
   <div id="filters">
-    <div id="filters-list" class="filters-list"></div>
-    <button id="reset-btn" onclick="resetFilters()">Reset</button>
+    <button class="filters-toggle" id="filters-toggle" aria-expanded="false" aria-controls="filters-body" type="button">
+      <span class="filters-toggle-left">
+        <span class="filters-toggle-label">Filters</span>
+        <span class="filters-active-badge" id="filters-active-badge"></span>
+      </span>
+      <svg class="filters-toggle-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6l5 5 5-5"/></svg>
+    </button>
+    <div class="filters-body" id="filters-body">
+      <div id="filters-list" class="filters-list"></div>
+      <button id="reset-btn" onclick="resetFilters()">Reset</button>
+    </div>
   </div>
-  <div id="data-context" class="data-context" aria-live="polite"></div>
 
   <div class="kpi-row">
     <div class="kpi">
@@ -196,16 +204,16 @@ const SCOPE       = 'https://www.googleapis.com/auth/spreadsheets.readonly';
 //  PALETTE
 // ===============================================
 const COLORS = [
-  '#10998c', '#41b0e7', '#6c6cb4', '#00b5a8',
-  '#189ccd', '#525299', '#89e5da', '#71cce1'
+  '#189ccd', '#41b0e7', '#0a6e94', '#71cce1',
+  '#5abde0', '#034d6b', '#9dd8ee', '#2a8db5'
 ];
 
 const TYPE_COLORS = {
-  'Email': '#2f6899',
-  'Live Consultation': '#7fb6d6',
-  'Office Hours': '#b6def0',
-  'Unknown': '#8788c1',
-  'Other': '#8788c1'
+  'Email': '#0a6e94',
+  'Live Consultation': '#41b0e7',
+  'Office Hours': '#9dd8ee',
+  'Unknown': '#5abde0',
+  'Other': '#5abde0'
 };
 
 const TERM_ORDER = { Spring: 1, Summer: 2, Fall: 3 };
@@ -675,25 +683,17 @@ function renderAll(rows) {
 }
 
 function renderContext(rows) {
-  const uniqueClients = new Set(rows.map(row => row.client).filter(client => client && client !== 'Unknown')).size;
-  const timedRows = rows.filter(row => row.minutes !== null);
-  const hours = timedRows.reduce((sum, row) => sum + row.minutes, 0) / 60;
   const activeFilters = FILTER_CONFIGS.filter(config => filtersState[config.id]?.size).length;
-  const dateContext = dateFilters.start || dateFilters.end
-    ? `${dateFilters.start || 'start'} to ${dateFilters.end || 'latest'}`
-    : 'All dates';
-
-  const chips = [
-    `${rows.length.toLocaleString()} consultation records`,
-    `${uniqueClients.toLocaleString()} clients`,
-    `${hours.toFixed(1)} hours`,
-    dateContext,
-    activeFilters ? `${activeFilters} active filter${activeFilters === 1 ? '' : 's'}` : 'All filters clear'
-  ];
-
-  document.getElementById('data-context').innerHTML = chips
-    .map(chip => `<span class="context-chip">${escapeHtml(chip)}</span>`)
-    .join('');
+  const dateActive = dateFilters.start || dateFilters.end ? 1 : 0;
+  const total = activeFilters + dateActive;
+  const badge = document.getElementById('filters-active-badge');
+  if (total) {
+    badge.textContent = `${total} active`;
+    badge.classList.add('visible');
+  } else {
+    badge.textContent = '';
+    badge.classList.remove('visible');
+  }
 }
 
 function renderKPIs(rows) {
@@ -904,7 +904,7 @@ function renderMonthlyChart(rows) {
       scales: {
         x: {
           stacked: true,
-          grid: { color: '#dce0e9', drawBorder: false },
+          grid: { display: false },
           ticks: {
             color: '#666666',
             font: { family: 'Montserrat', size: 11 },
@@ -914,7 +914,7 @@ function renderMonthlyChart(rows) {
         },
         y: {
           stacked: true,
-          grid: { color: '#dce0e9', drawBorder: false },
+          grid: { display: false },
           ticks: { color: '#666666', font: { family: 'Montserrat', size: 11 }, precision: 0 },
           beginAtZero: true
         }
@@ -1140,7 +1140,7 @@ function renderFacultyMixChart(rows) {
       scales: {
         x: {
           stacked: true,
-          grid: { color: '#dce0e9', drawBorder: false },
+          grid: { display: false },
           ticks: {
             color: '#666666',
             font: { family: 'Montserrat', size: 12 },
@@ -1148,7 +1148,7 @@ function renderFacultyMixChart(rows) {
         },
         y: {
           stacked: true,
-          grid: { color: '#dce0e9', drawBorder: false },
+          grid: { display: false },
           ticks: { color: '#666666', font: { family: 'Montserrat', size: 11 }, precision: 0 },
           beginAtZero: true,
         }
@@ -1223,7 +1223,7 @@ function renderChart(id, data, type, horizontal = false) {
       },
       scales: isDoughnut ? {} : {
         x: {
-          grid: { color: '#dce0e9', drawBorder: false },
+          grid: { display: false },
           ticks: {
             color: '#666666',
             font: { family: 'Montserrat', size: 11 },
@@ -1233,7 +1233,7 @@ function renderChart(id, data, type, horizontal = false) {
           beginAtZero: horizontal
         },
         y: {
-          grid: { color: '#dce0e9', drawBorder: false },
+          grid: { display: false },
           ticks: { color: '#666666', font: { family: 'Montserrat', size: 11 }, precision: 0 },
           beginAtZero: true
         }
@@ -1401,6 +1401,13 @@ function showError(msg) {
   el.classList.add('is-visible');
   el.textContent = 'Notice: ' + msg;
 }
+
+document.getElementById('filters-toggle').addEventListener('click', () => {
+  const filtersEl = document.getElementById('filters');
+  const toggle = document.getElementById('filters-toggle');
+  const isOpen = filtersEl.classList.toggle('filters-open');
+  toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+});
 
 document.addEventListener('click', event => {
   if (!event.target.closest('.filter-group')) closeFilterMenu();
