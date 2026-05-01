@@ -938,7 +938,16 @@ select {
 
 .dept-attendee-grid {
   grid-template-columns: 3fr 2fr;
+  grid-template-rows: 480px;
   align-items: stretch;
+}
+
+.dept-attendee-grid .chart-card {
+  overflow: hidden;
+}
+
+.dept-attendee-grid .chart-wrap {
+  overflow: hidden;
 }
 
 .dept-attendee-grid .attendee-table-section {
