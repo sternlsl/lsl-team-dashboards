@@ -942,14 +942,6 @@ select {
   align-items: stretch;
 }
 
-.dept-attendee-grid .chart-card {
-  overflow: hidden;
-}
-
-.dept-attendee-grid .chart-wrap {
-  overflow: hidden;
-}
-
 .dept-attendee-grid .attendee-table-section {
   display: flex;
   flex-direction: column;
