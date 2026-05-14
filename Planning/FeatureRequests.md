@@ -17,9 +17,9 @@
   - [ ] Cut
 
 - [ ] **What we help with**
-  - Direct labels if possible
   - Convert to horizontal bar chart
-
+  - Direct labels if possible
+  
 - [ ] **Faculty mix**
   - Convert to donut (disregard stacks)
   - Direct labels if possible
