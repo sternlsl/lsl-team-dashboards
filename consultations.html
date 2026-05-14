@@ -793,10 +793,14 @@ const doughnutDirectLabelsPlugin = {
     if (!total || !meta?.data?.length) return;
 
     const { ctx, chartArea } = chart;
-    const minAngleForInsideLabel = pluginOptions.minAngleForInsideLabel || 0.85;
-    ctx.save();
-    ctx.textBaseline = 'middle';
-    ctx.lineWidth = 1.5;
+    const lineHeight = 15;
+    const labelGap = 10;
+    const calloutGap = 18;
+    const maxLabelWidth = Math.max(
+      80,
+      Math.min(116, chartArea.left - 16, chart.width - chartArea.right - 16)
+    );
+    const labelsBySide = { left: [], right: [] };
 
     meta.data.forEach((arc, index) => {
       const value = Number(values[index] || 0);
@@ -804,66 +808,76 @@ const doughnutDirectLabelsPlugin = {
 
       const props = arc.getProps(['x', 'y', 'startAngle', 'endAngle', 'innerRadius', 'outerRadius'], true);
       const angle = midpoint(props.startAngle, props.endAngle);
-      const angleSpan = props.endAngle - props.startAngle;
       const label = chart.data.labels[index];
       const pct = Math.round((value / total) * 100);
       const color = dataset.backgroundColor[index];
+      const side = Math.cos(angle) >= 0 ? 'right' : 'left';
+      const edgeX = props.x + Math.cos(angle) * props.outerRadius;
+      const edgeY = props.y + Math.sin(angle) * props.outerRadius;
+      const elbowX = props.x + Math.cos(angle) * (props.outerRadius + calloutGap);
+      const elbowY = props.y + Math.sin(angle) * (props.outerRadius + calloutGap);
 
-      if (angleSpan >= minAngleForInsideLabel) {
-        const radius = midpoint(props.innerRadius, props.outerRadius);
-        const x = props.x + Math.cos(angle) * radius;
-        const y = props.y + Math.sin(angle) * radius;
-        const lines = label === 'Tenure/Tenure-Track'
-          ? ['Tenure/', 'Tenure-Track', `${value.toLocaleString()} (${pct}%)`]
-          : [label, `${value.toLocaleString()} (${pct}%)`];
+      labelsBySide[side].push({
+        color,
+        edgeX,
+        edgeY,
+        elbowX,
+        elbowY,
+        labelLines: label === 'Tenure/Tenure-Track' ? ['Tenure/', 'Tenure-Track'] : [label],
+        valueLabel: `${value.toLocaleString()} (${pct}%)`,
+        y: elbowY
+      });
+    });
 
-        ctx.textAlign = 'center';
-        ctx.fillStyle = getReadableTextColor(color);
+    positionDoughnutLabels(labelsBySide.left, chartArea.top + 8, chartArea.bottom - 8, lineHeight * 3);
+    positionDoughnutLabels(labelsBySide.right, chartArea.top + 8, chartArea.bottom - 8, lineHeight * 3);
+
+    ctx.save();
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 1.5;
+
+    ['left', 'right'].forEach(side => {
+      const isRight = side === 'right';
+      const textX = isRight ? chartArea.right + labelGap : chartArea.left - labelGap;
+      const elbowEndX = textX + (isRight ? -labelGap : labelGap);
+
+      labelsBySide[side].forEach(item => {
+        ctx.strokeStyle = item.color;
+        ctx.beginPath();
+        ctx.moveTo(item.edgeX, item.edgeY);
+        ctx.lineTo(item.elbowX, item.elbowY);
+        ctx.lineTo(elbowEndX, item.y);
+        ctx.stroke();
+
+        ctx.textAlign = isRight ? 'left' : 'right';
+        ctx.fillStyle = '#333333';
         ctx.font = '700 11px Montserrat, Arial, sans-serif';
-        const lineHeight = 13;
-        const startY = y - ((lines.length - 1) * lineHeight / 2);
-        lines.forEach((line, lineIndex) => {
-          ctx.fillText(line, x, startY + (lineIndex * lineHeight));
+        const totalLines = item.labelLines.length + 1;
+        const startY = item.y - ((totalLines - 1) * lineHeight / 2);
+        item.labelLines.forEach((line, lineIndex) => {
+          ctx.fillText(line, textX, startY + (lineIndex * lineHeight), maxLabelWidth);
         });
-        return;
-      }
-
-      const edgeX = props.x + Math.cos(angle) * (props.outerRadius - 2);
-      const edgeY = props.y + Math.sin(angle) * (props.outerRadius - 2);
-      const labelRadius = props.outerRadius + 22;
-      const labelX = props.x + Math.cos(angle) * labelRadius;
-      const labelY = props.y + Math.sin(angle) * labelRadius;
-      const alignedRight = Math.cos(angle) >= 0;
-      const clampedX = alignedRight
-        ? Math.min(labelX, chartArea.right - 2)
-        : Math.max(labelX, chartArea.left + 2);
-
-      ctx.strokeStyle = color;
-      ctx.beginPath();
-      ctx.moveTo(edgeX, edgeY);
-      ctx.lineTo(clampedX, labelY);
-      ctx.stroke();
-
-      ctx.textAlign = alignedRight ? 'left' : 'right';
-      ctx.fillStyle = '#333333';
-      ctx.font = '700 11px Montserrat, Arial, sans-serif';
-      ctx.fillText(label, clampedX + (alignedRight ? 6 : -6), labelY - 6);
-      ctx.font = '600 10px Montserrat, Arial, sans-serif';
-      ctx.fillText(`${value.toLocaleString()} (${pct}%)`, clampedX + (alignedRight ? 6 : -6), labelY + 8);
+        ctx.font = '600 10px Montserrat, Arial, sans-serif';
+        ctx.fillText(item.valueLabel, textX, startY + (item.labelLines.length * lineHeight), maxLabelWidth);
+      });
     });
 
     ctx.restore();
   }
 };
 
-function getReadableTextColor(hex) {
-  const clean = String(hex || '').replace('#', '').slice(0, 6);
-  if (clean.length !== 6) return '#ffffff';
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
-  const luminance = ((0.299 * r) + (0.587 * g) + (0.114 * b)) / 255;
-  return luminance > 0.58 ? '#333333' : '#ffffff';
+function positionDoughnutLabels(items, minY, maxY, spacing) {
+  items.sort((a, b) => a.y - b.y);
+  items.forEach((item, index) => {
+    item.y = Math.max(item.y, index ? items[index - 1].y + spacing : minY);
+  });
+
+  for (let index = items.length - 1; index >= 0; index--) {
+    items[index].y = Math.min(
+      items[index].y,
+      index === items.length - 1 ? maxY : items[index + 1].y - spacing
+    );
+  }
 }
 
 const stackedTotalLabelsPlugin = {
@@ -1142,7 +1156,10 @@ function renderFacultyMixChart(rows) {
     isUnique ? groupValues[group].size : groupValues[group]
   ));
 
-  const ctx = document.getElementById(chartId).getContext('2d');
+  const canvas = document.getElementById(chartId);
+  const chartWidth = canvas.parentElement?.clientWidth || 560;
+  const sidePadding = chartWidth < 520 ? 96 : 130;
+  const ctx = canvas.getContext('2d');
   charts[chartId] = new Chart(ctx, {
     type: 'doughnut',
     data: {
@@ -1159,8 +1176,8 @@ function renderFacultyMixChart(rows) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      cutout: '58%',
-      layout: { padding: { top: 18, right: 28, bottom: 18, left: 28 } },
+      cutout: '46%',
+      layout: { padding: { top: 32, right: sidePadding, bottom: 32, left: sidePadding } },
       plugins: {
         legend: { display: false },
         tooltip: {

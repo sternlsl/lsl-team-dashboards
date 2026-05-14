@@ -933,7 +933,7 @@ select {
 }
 
 .chart-wrap.faculty-donut {
-  height: 320px;
+  height: 350px;
 }
 
 .chart-wrap.tall {
@@ -1400,6 +1400,6 @@ tr:hover td {
   }
 
   .chart-wrap.faculty-donut {
-    height: 300px;
+    height: 340px;
   }
 }
