@@ -199,6 +199,7 @@ const TYPE_COLORS = {
 };
 
 const LABELED_DONUT_BASE_COLOR = '#0197CD';
+const CATEGORY_BAR_COLOR = '#0197CD';
 
 const FACULTY_GROUP_COLORS = {
   'Adjunct': LABELED_DONUT_BASE_COLOR,
@@ -663,7 +664,10 @@ function renderAll(rows) {
   renderContext(rows);
   renderKPIs(rows);
   renderMonthlyChart(rows);
-  renderChart('chart-category', topN(countBy(rows, 'category'), 10), 'doughnut');
+  renderChart('chart-category', topN(countBy(rows, 'category'), 10), 'bar', true, {
+    color: CATEGORY_BAR_COLOR,
+    solidBarColor: true
+  });
   renderConsultationTypeChart(rows);
   renderDeptChart(rows);
   renderFacultyMixChart(rows);
@@ -1231,10 +1235,10 @@ function renderFacultyMixChart(rows) {
   );
 }
 
-function renderChart(id, data, type, horizontal = false) {
+function renderChart(id, data, type, horizontal = false, chartOptions = {}) {
   const labels = Object.keys(data);
   const values = Object.values(data);
-  const colors = labels.map((label, i) => TYPE_COLORS[label] || COLORS[i % COLORS.length]);
+  const colors = labels.map((label, i) => chartOptions.color || TYPE_COLORS[label] || COLORS[i % COLORS.length]);
 
   if (charts[id]) charts[id].destroy();
 
@@ -1247,7 +1251,7 @@ function renderChart(id, data, type, horizontal = false) {
       labels,
       datasets: [{
         data: values,
-        backgroundColor: isDoughnut ? colors : colors.map(c => c + 'cc'),
+        backgroundColor: isDoughnut || chartOptions.solidBarColor ? colors : colors.map(c => c + 'cc'),
         borderColor: isDoughnut ? colors.map(c => c + '33') : colors,
         borderWidth: isDoughnut ? 2 : 1,
         borderRadius: isDoughnut ? 0 : 4,
