@@ -14,7 +14,7 @@
   - Cut
 
 - [x] **Status**
-  - [ ] Cut
+  - [x] Cut
 
 - [ ] **What we help with**
   - Convert to horizontal bar chart

@@ -128,7 +128,7 @@
           <option value="unique" selected>Unique visitors</option>
         </select>
       </div>
-      <div class="chart-wrap"><canvas id="chart-faculty-type"></canvas></div>
+      <div class="chart-wrap faculty-donut"><canvas id="chart-faculty-type"></canvas></div>
     </div>
   </div>
 
@@ -196,6 +196,13 @@ const TYPE_COLORS = {
   'Office Hours': '#9dd8ee',
   'Unknown': '#5abde0',
   'Other': '#5abde0'
+};
+
+const FACULTY_GROUP_COLORS = {
+  'Adjunct': '#189ccd',
+  'Clinical': '#10998c',
+  'Tenure/Tenure-Track': '#6c6cb4',
+  'Other': '#9dd8ee'
 };
 
 const TERM_ORDER = { Spring: 1, Summer: 2, Fall: 3 };
@@ -774,6 +781,91 @@ const doughnutCenterTextPlugin = {
   }
 };
 
+const doughnutDirectLabelsPlugin = {
+  id: 'doughnutDirectLabels',
+  afterDatasetsDraw(chart, args, pluginOptions) {
+    if (!pluginOptions?.display) return;
+
+    const dataset = chart.data.datasets[0];
+    const values = dataset?.data || [];
+    const total = values.reduce((sum, value) => sum + Number(value || 0), 0);
+    const meta = chart.getDatasetMeta(0);
+    if (!total || !meta?.data?.length) return;
+
+    const { ctx, chartArea } = chart;
+    const minAngleForInsideLabel = pluginOptions.minAngleForInsideLabel || 0.85;
+    ctx.save();
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 1.5;
+
+    meta.data.forEach((arc, index) => {
+      const value = Number(values[index] || 0);
+      if (!value) return;
+
+      const props = arc.getProps(['x', 'y', 'startAngle', 'endAngle', 'innerRadius', 'outerRadius'], true);
+      const angle = midpoint(props.startAngle, props.endAngle);
+      const angleSpan = props.endAngle - props.startAngle;
+      const label = chart.data.labels[index];
+      const pct = Math.round((value / total) * 100);
+      const color = dataset.backgroundColor[index];
+
+      if (angleSpan >= minAngleForInsideLabel) {
+        const radius = midpoint(props.innerRadius, props.outerRadius);
+        const x = props.x + Math.cos(angle) * radius;
+        const y = props.y + Math.sin(angle) * radius;
+        const lines = label === 'Tenure/Tenure-Track'
+          ? ['Tenure/', 'Tenure-Track', `${value.toLocaleString()} (${pct}%)`]
+          : [label, `${value.toLocaleString()} (${pct}%)`];
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = getReadableTextColor(color);
+        ctx.font = '700 11px Montserrat, Arial, sans-serif';
+        const lineHeight = 13;
+        const startY = y - ((lines.length - 1) * lineHeight / 2);
+        lines.forEach((line, lineIndex) => {
+          ctx.fillText(line, x, startY + (lineIndex * lineHeight));
+        });
+        return;
+      }
+
+      const edgeX = props.x + Math.cos(angle) * (props.outerRadius - 2);
+      const edgeY = props.y + Math.sin(angle) * (props.outerRadius - 2);
+      const labelRadius = props.outerRadius + 22;
+      const labelX = props.x + Math.cos(angle) * labelRadius;
+      const labelY = props.y + Math.sin(angle) * labelRadius;
+      const alignedRight = Math.cos(angle) >= 0;
+      const clampedX = alignedRight
+        ? Math.min(labelX, chartArea.right - 2)
+        : Math.max(labelX, chartArea.left + 2);
+
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(edgeX, edgeY);
+      ctx.lineTo(clampedX, labelY);
+      ctx.stroke();
+
+      ctx.textAlign = alignedRight ? 'left' : 'right';
+      ctx.fillStyle = '#333333';
+      ctx.font = '700 11px Montserrat, Arial, sans-serif';
+      ctx.fillText(label, clampedX + (alignedRight ? 6 : -6), labelY - 6);
+      ctx.font = '600 10px Montserrat, Arial, sans-serif';
+      ctx.fillText(`${value.toLocaleString()} (${pct}%)`, clampedX + (alignedRight ? 6 : -6), labelY + 8);
+    });
+
+    ctx.restore();
+  }
+};
+
+function getReadableTextColor(hex) {
+  const clean = String(hex || '').replace('#', '').slice(0, 6);
+  if (clean.length !== 6) return '#ffffff';
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  const luminance = ((0.299 * r) + (0.587 * g) + (0.114 * b)) / 255;
+  return luminance > 0.58 ? '#333333' : '#ffffff';
+}
+
 const stackedTotalLabelsPlugin = {
   id: 'stackedTotalLabels',
   afterDatasetsDraw(chart, args, pluginOptions) {
@@ -1031,64 +1123,44 @@ function renderFacultyMixChart(rows) {
     : 'Adjunct, Clinical, Tenure/TT, and Other — by consultation count';
   document.getElementById('faculty-chart-subtitle').textContent = subtitle;
 
-  // Collect rank breakdown per group (counts or unique client sets)
-  const groupRanks = {};
-  FACULTY_MIX_GROUP_ORDER.forEach(g => { groupRanks[g] = {}; });
+  const groupValues = {};
+  FACULTY_MIX_GROUP_ORDER.forEach(group => {
+    groupValues[group] = isUnique ? new Set() : 0;
+  });
 
   rows.forEach(row => {
     const group = classifyFacultyGroup(row);
-    const rank = (row.rank || '').trim() || 'No rank listed';
     if (isUnique) {
-      if (!groupRanks[group][rank]) groupRanks[group][rank] = new Set();
       const client = (row.client || '').trim();
-      if (client) groupRanks[group][rank].add(client);
+      if (client) groupValues[group].add(client);
     } else {
-      groupRanks[group][rank] = (groupRanks[group][rank] || 0) + 1;
+      groupValues[group] += 1;
     }
   });
 
-  // Resolve Sets to counts
-  if (isUnique) {
-    FACULTY_MIX_GROUP_ORDER.forEach(g => {
-      Object.keys(groupRanks[g]).forEach(rank => {
-        groupRanks[g][rank] = groupRanks[g][rank].size;
-      });
-    });
-  }
-
-  // Collect all unique ranks across all groups, sorted by total desc
-  const rankTotals = {};
-  FACULTY_MIX_GROUP_ORDER.forEach(g => {
-    Object.entries(groupRanks[g]).forEach(([rank, count]) => {
-      rankTotals[rank] = (rankTotals[rank] || 0) + count;
-    });
-  });
-  const allRanks = Object.keys(rankTotals).sort((a, b) => rankTotals[b] - rankTotals[a]);
-
-  // One dataset per rank (stacked segment), each dataset has 4 values (one per group)
-  const datasets = allRanks.map((rank, i) => {
-    const baseColor = COLORS[i % COLORS.length];
-    return {
-      label: rank,
-      data: FACULTY_MIX_GROUP_ORDER.map(g => groupRanks[g][rank] || 0),
-      backgroundColor: baseColor + 'cc',
-      borderColor: baseColor,
-      borderWidth: 1,
-      borderRadius: 3,
-      stack: 'faculty',
-    };
-  });
+  const values = FACULTY_MIX_GROUP_ORDER.map(group => (
+    isUnique ? groupValues[group].size : groupValues[group]
+  ));
 
   const ctx = document.getElementById(chartId).getContext('2d');
   charts[chartId] = new Chart(ctx, {
-    type: 'bar',
+    type: 'doughnut',
     data: {
       labels: FACULTY_MIX_GROUP_ORDER,
-      datasets,
+      datasets: [{
+        data: values,
+        backgroundColor: FACULTY_MIX_GROUP_ORDER.map(group => FACULTY_GROUP_COLORS[group]),
+        borderColor: '#ffffff',
+        borderWidth: 4,
+        spacing: 2,
+        hoverOffset: 8,
+      }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      cutout: '58%',
+      layout: { padding: { top: 18, right: 28, bottom: 18, left: 28 } },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -1103,36 +1175,21 @@ function renderFacultyMixChart(rows) {
             label: context => {
               const value = Number(context.raw || 0);
               if (!value) return null;
-              const groupIdx = context.dataIndex;
-              const groupTotal = datasets.reduce((s, ds) => s + Number(ds.data[groupIdx] || 0), 0);
-              const pct = groupTotal ? ` (${Math.round((value / groupTotal) * 100)}%)` : '';
-              return `${context.dataset.label}: ${value.toLocaleString()}${pct}`;
+              const total = context.dataset.data.reduce((sum, item) => sum + Number(item || 0), 0);
+              const pct = total ? ` (${Math.round((value / total) * 100)}%)` : '';
+              return `${context.label}: ${value.toLocaleString()}${pct}`;
             }
           }
         },
-        stackedTotalLabels: {
-          display: true,
-          maxLabels: 8,
-        }
-      },
-      scales: {
-        x: {
-          stacked: true,
-          grid: { display: false },
-          ticks: {
-            color: '#666666',
-            font: { family: 'Montserrat', size: 12 },
-          }
+        doughnutCenterText: {
+          display: true
         },
-        y: {
-          stacked: true,
-          grid: { display: false },
-          ticks: { color: '#666666', font: { family: 'Montserrat', size: 11 }, precision: 0 },
-          beginAtZero: true,
+        doughnutDirectLabels: {
+          display: true,
         }
       }
     },
-    plugins: [stackedTotalLabelsPlugin],
+    plugins: [doughnutCenterTextPlugin, doughnutDirectLabelsPlugin],
   });
 }
 
