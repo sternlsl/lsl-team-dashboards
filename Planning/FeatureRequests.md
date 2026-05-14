@@ -2,26 +2,49 @@
 
 ## Consultations
 
-- Staff breakdown. For time range:
-  - \# of consultations (stacked by category?)
-  - hours
-  - open items
+- **Color**
+  - [ ] Make uniform where possible
+  - [ ] Separate donuts w/ padding/borders if possible
 
-- Historical performance
-  - Selected time period vs. past years
+- **Summary graphic**
+  - For date range below 90 days, show weekly breakdown
+  - <= 7 days, remove from view
 
-- Weekly trends
-  - Consultations per week
-  - Hours per week
-  - First-time clients
-  - Returning clients
-  - Repeat engagement within semester
+- [ ] **Faculty rank**
+  - Cut
+
+- [ ] **Status**
+  - [ ] Cut
+
+- [ ] **What we help with**
+  - Direct labels if possible
+  - Convert to horizontal bar chart
+
+- [ ] **Faculty mix**
+  - Convert to donut (disregard stacks)
+  - Direct labels if possible
+
+- [ ] **Consultation type**
+  - Convert to donut
+
+- [ ] **Remove status KPI**
+
+- [ ] **Add 1st-time consultation view**
+  - [ ] Or KPI
+
+----
 
 ## Workshop attendance
 
-- Expanded Workshop Breakdown - Add first-time attendees
+- [ ] Expanded Workshop Breakdown - Add first-time attendees
+- [ ] Default all selectors to total attendance
+- [ ] **Faculty attendance breakdown**
+  - [ ] Consolidate to show the 3 main faculty categories
 
 
 ## Common
 
 - Create a 3rd weekly overview pulling from each dashboard, rather than overloaded each one with excessive charts 
+- [ ] **Check for persistent login**
+  - [ ] **If not possible, consolidate pages**
+- 
