@@ -78,11 +78,6 @@
       <span class="kpi-value" id="kpi-hours">-</span>
       <span class="kpi-sub">consultation hours</span>
     </div>
-    <div class="kpi">
-      <span class="kpi-label">Open items</span>
-      <span class="kpi-value" id="kpi-open">-</span>
-      <span class="kpi-sub">in progress or referred</span>
-    </div>
   </div>
 
   <div class="chart-grid full">
@@ -685,13 +680,11 @@ function renderKPIs(rows) {
   const timedRows = rows.filter(r => r.minutes !== null);
   const totalMinutes = timedRows.reduce((sum, row) => sum + row.minutes, 0);
   const uniqueClients = new Set(rows.map(row => row.client).filter(client => client && client !== 'Unknown'));
-  const openItems = rows.filter(row => ['in progress', 'referred'].includes(row.status.toLowerCase())).length;
 
   document.getElementById('kpi-total').textContent = rows.length.toLocaleString();
   document.getElementById('kpi-clients').textContent = uniqueClients.size.toLocaleString();
   document.getElementById('kpi-avg-time').textContent = timedRows.length ? `${Math.round(totalMinutes / timedRows.length)}` : '-';
   document.getElementById('kpi-hours').textContent = timedRows.length ? (totalMinutes / 60).toFixed(1) : '-';
-  document.getElementById('kpi-open').textContent = openItems.toLocaleString();
 }
 
 function countBy(rows, key) {

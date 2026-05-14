@@ -27,7 +27,7 @@
 - [ ] **Consultation type**
   - Convert to donut
 
-- [ ] **Remove status KPI**
+- [x] **Remove status KPI**
 
 - [ ] **Add 1st-time consultation view**
   - [ ] Or KPI
