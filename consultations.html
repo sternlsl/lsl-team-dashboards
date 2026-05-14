@@ -139,22 +139,9 @@
 
   <div class="chart-grid">
     <div class="chart-card">
-      <div class="chart-title">Status</div>
-      <div class="chart-subtitle">Resolved, referred, and in-progress work</div>
-      <div class="chart-wrap"><canvas id="chart-status"></canvas></div>
-    </div>
-    <div class="chart-card">
       <div class="chart-title">Staff load</div>
       <div class="chart-subtitle">Consultations by staff initials</div>
       <div class="chart-wrap"><canvas id="chart-staff"></canvas></div>
-    </div>
-  </div>
-
-  <div class="chart-grid full">
-    <div class="chart-card">
-      <div class="chart-title">Faculty rank</div>
-      <div class="chart-subtitle">Top ranks and roles represented</div>
-      <div class="chart-wrap tall"><canvas id="chart-rank"></canvas></div>
     </div>
   </div>
 
@@ -676,9 +663,7 @@ function renderAll(rows) {
   renderChart('chart-type', countBy(rows, 'type'), 'bar');
   renderDeptChart(rows);
   renderFacultyMixChart(rows);
-  renderChart('chart-status', countBy(rows, 'status'), 'bar');
   renderChart('chart-staff', countBy(rows, 'initials'), 'bar');
-  renderChart('chart-rank', topN(countBy(rows, 'rank'), 18), 'bar', true);
   renderTable(rows);
 }
 

@@ -10,10 +10,10 @@
   - For date range below 90 days, show weekly breakdown
   - <= 7 days, remove from view
 
-- [ ] **Faculty rank**
+- [x] **Faculty rank**
   - Cut
 
-- [ ] **Status**
+- [x] **Status**
   - [ ] Cut
 
 - [ ] **What we help with**
