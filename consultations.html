@@ -97,7 +97,7 @@
     <div class="chart-card">
       <div class="chart-title">Consultation type</div>
       <div class="chart-subtitle">Email, live consultation, and office hours</div>
-      <div class="chart-wrap"><canvas id="chart-type"></canvas></div>
+      <div class="chart-wrap labeled-donut"><canvas id="chart-type"></canvas></div>
     </div>
   </div>
 
@@ -198,11 +198,13 @@ const TYPE_COLORS = {
   'Other': '#5abde0'
 };
 
+const LABELED_DONUT_BASE_COLOR = '#0197CD';
+
 const FACULTY_GROUP_COLORS = {
-  'Adjunct': '#0197CD',
-  'Clinical': '#0197CD',
-  'Tenure/Tenure-Track': '#0197CD',
-  'Other': '#0197CD'
+  'Adjunct': LABELED_DONUT_BASE_COLOR,
+  'Clinical': LABELED_DONUT_BASE_COLOR,
+  'Tenure/Tenure-Track': LABELED_DONUT_BASE_COLOR,
+  'Other': LABELED_DONUT_BASE_COLOR
 };
 
 const TERM_ORDER = { Spring: 1, Summer: 2, Fall: 3 };
@@ -662,7 +664,7 @@ function renderAll(rows) {
   renderKPIs(rows);
   renderMonthlyChart(rows);
   renderChart('chart-category', topN(countBy(rows, 'category'), 10), 'doughnut');
-  renderChart('chart-type', countBy(rows, 'type'), 'bar');
+  renderConsultationTypeChart(rows);
   renderDeptChart(rows);
   renderFacultyMixChart(rows);
   renderChart('chart-staff', countBy(rows, 'initials'), 'bar');
@@ -1100,73 +1102,21 @@ function midpoint(a, b) {
   return a + ((b - a) / 2);
 }
 
-function renderDeptChart(rows) {
-  const metric = document.getElementById('dept-metric').value;
-  const isUnique = metric === 'unique';
-  const data = isUnique
-    ? topN(countUniqueBy(rows, 'dept'), 16)
-    : topN(countBy(rows, 'dept'), 16);
-  const subtitle = isUnique
-    ? 'Top departments by unique visitors'
-    : 'Top departments by consultation count';
-  document.getElementById('dept-chart-subtitle').textContent = subtitle;
-  renderChart('chart-dept', data, 'bar', true);
-}
-
-const TENURE_RANKS = new Set(['Professor', 'Associate Professor', 'Assistant Professor']);
-
-function classifyFacultyGroup(row) {
-  const type = (row.facultyType || '').trim();
-  const rank = (row.rank || '').trim();
-  if (type === 'Adjunct') return 'Adjunct';
-  if (type === 'Full-time' && /clinical/i.test(rank)) return 'Clinical';
-  if (type === 'Full-time' && TENURE_RANKS.has(rank)) return 'Tenure/Tenure-Track';
-  return 'Other';
-}
-
-const FACULTY_MIX_GROUP_ORDER = ['Adjunct', 'Clinical', 'Tenure/Tenure-Track', 'Other'];
-
-function renderFacultyMixChart(rows) {
-  const chartId = 'chart-faculty-type';
+function renderLabeledDoughnutChart(chartId, labels, values, colors) {
   if (charts[chartId]) charts[chartId].destroy();
-
-  const metric = document.getElementById('faculty-metric').value;
-  const isUnique = metric === 'unique';
-  const subtitle = isUnique
-    ? 'Adjunct, Clinical, Tenure/TT, and Other — by unique visitors'
-    : 'Adjunct, Clinical, Tenure/TT, and Other — by consultation count';
-  document.getElementById('faculty-chart-subtitle').textContent = subtitle;
-
-  const groupValues = {};
-  FACULTY_MIX_GROUP_ORDER.forEach(group => {
-    groupValues[group] = isUnique ? new Set() : 0;
-  });
-
-  rows.forEach(row => {
-    const group = classifyFacultyGroup(row);
-    if (isUnique) {
-      const client = (row.client || '').trim();
-      if (client) groupValues[group].add(client);
-    } else {
-      groupValues[group] += 1;
-    }
-  });
-
-  const values = FACULTY_MIX_GROUP_ORDER.map(group => (
-    isUnique ? groupValues[group].size : groupValues[group]
-  ));
 
   const canvas = document.getElementById(chartId);
   const chartWidth = canvas.parentElement?.clientWidth || 560;
   const sidePadding = chartWidth < 520 ? 96 : 130;
   const ctx = canvas.getContext('2d');
+
   charts[chartId] = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: FACULTY_MIX_GROUP_ORDER,
+      labels,
       datasets: [{
         data: values,
-        backgroundColor: FACULTY_MIX_GROUP_ORDER.map(group => FACULTY_GROUP_COLORS[group]),
+        backgroundColor: colors,
         borderColor: '#ffffff',
         borderWidth: 4,
         spacing: 2,
@@ -1208,6 +1158,77 @@ function renderFacultyMixChart(rows) {
     },
     plugins: [doughnutCenterTextPlugin, doughnutDirectLabelsPlugin],
   });
+}
+
+function renderConsultationTypeChart(rows) {
+  const data = countBy(rows, 'type');
+  const labels = Object.keys(data);
+  const values = Object.values(data);
+  const colors = labels.map(() => LABELED_DONUT_BASE_COLOR);
+  renderLabeledDoughnutChart('chart-type', labels, values, colors);
+}
+
+function renderDeptChart(rows) {
+  const metric = document.getElementById('dept-metric').value;
+  const isUnique = metric === 'unique';
+  const data = isUnique
+    ? topN(countUniqueBy(rows, 'dept'), 16)
+    : topN(countBy(rows, 'dept'), 16);
+  const subtitle = isUnique
+    ? 'Top departments by unique visitors'
+    : 'Top departments by consultation count';
+  document.getElementById('dept-chart-subtitle').textContent = subtitle;
+  renderChart('chart-dept', data, 'bar', true);
+}
+
+const TENURE_RANKS = new Set(['Professor', 'Associate Professor', 'Assistant Professor']);
+
+function classifyFacultyGroup(row) {
+  const type = (row.facultyType || '').trim();
+  const rank = (row.rank || '').trim();
+  if (type === 'Adjunct') return 'Adjunct';
+  if (type === 'Full-time' && /clinical/i.test(rank)) return 'Clinical';
+  if (type === 'Full-time' && TENURE_RANKS.has(rank)) return 'Tenure/Tenure-Track';
+  return 'Other';
+}
+
+const FACULTY_MIX_GROUP_ORDER = ['Adjunct', 'Clinical', 'Tenure/Tenure-Track', 'Other'];
+
+function renderFacultyMixChart(rows) {
+  const chartId = 'chart-faculty-type';
+
+  const metric = document.getElementById('faculty-metric').value;
+  const isUnique = metric === 'unique';
+  const subtitle = isUnique
+    ? 'Adjunct, Clinical, Tenure/TT, and Other — by unique visitors'
+    : 'Adjunct, Clinical, Tenure/TT, and Other — by consultation count';
+  document.getElementById('faculty-chart-subtitle').textContent = subtitle;
+
+  const groupValues = {};
+  FACULTY_MIX_GROUP_ORDER.forEach(group => {
+    groupValues[group] = isUnique ? new Set() : 0;
+  });
+
+  rows.forEach(row => {
+    const group = classifyFacultyGroup(row);
+    if (isUnique) {
+      const client = (row.client || '').trim();
+      if (client) groupValues[group].add(client);
+    } else {
+      groupValues[group] += 1;
+    }
+  });
+
+  const values = FACULTY_MIX_GROUP_ORDER.map(group => (
+    isUnique ? groupValues[group].size : groupValues[group]
+  ));
+
+  renderLabeledDoughnutChart(
+    chartId,
+    FACULTY_MIX_GROUP_ORDER,
+    values,
+    FACULTY_MIX_GROUP_ORDER.map(group => FACULTY_GROUP_COLORS[group])
+  );
 }
 
 function renderChart(id, data, type, horizontal = false) {

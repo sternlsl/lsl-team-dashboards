@@ -20,7 +20,7 @@
   - Convert to horizontal bar chart
   - Direct labels if possible
   
-- [ ] **Faculty mix**
+- [x] **Faculty mix**
   - Convert to donut (disregard stacks)
   - Direct labels if possible
 

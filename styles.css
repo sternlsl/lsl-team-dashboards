@@ -932,7 +932,8 @@ select {
   height: 280px;
 }
 
-.chart-wrap.faculty-donut {
+.chart-wrap.faculty-donut,
+.chart-wrap.labeled-donut {
   height: 350px;
 }
 
@@ -1399,7 +1400,8 @@ tr:hover td {
     height: 390px;
   }
 
-  .chart-wrap.faculty-donut {
+  .chart-wrap.faculty-donut,
+  .chart-wrap.labeled-donut {
     height: 340px;
   }
 }
