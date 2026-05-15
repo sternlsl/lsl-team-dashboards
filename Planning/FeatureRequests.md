@@ -4,7 +4,7 @@
 
 - **Color**
   - [ ] Make uniform where possible
-  - [ ] Separate donuts w/ padding/borders if possible
+  - [x] Separate donuts w/ padding/borders if possible
 
 - **Summary graphic**
   - For date range below 90 days, show weekly breakdown
@@ -45,6 +45,6 @@
 ## Common
 
 - Create a 3rd weekly overview pulling from each dashboard, rather than overloaded each one with excessive charts 
-- [ ] **Check for persistent login**
-  - [ ] **If not possible, consolidate pages**
+- [?] **Check for persistent login**
+  - [ ] ~~**If not possible, consolidate pages**~~
 - 

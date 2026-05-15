@@ -693,7 +693,10 @@ function renderAll(rows) {
   renderConsultationTypeChart(rows);
   renderDeptChart(rows);
   renderFacultyMixChart(rows);
-  renderChart('chart-staff', countBy(rows, 'initials'), 'bar');
+  renderChart('chart-staff', countBy(rows, 'initials'), 'bar', false, {
+    color: SOLID_BAR_COLOR,
+    solidBarColor: true
+  });
   renderTable(rows);
 }
 
