@@ -232,6 +232,7 @@ const COLORS = [
   '#10998c', '#1db8aa', '#00d4c4', '#007d73',
   '#5cd5ca', '#005e57', '#89e5da', '#3cbfb4'
 ];
+const SINGLE_BAR_COLOR = '#54ACA2';
 
 const TYPE_COLORS = {
   Bootcamp: '#10998c',
@@ -990,10 +991,10 @@ function renderChart(id, data, type, horizontal = false, datasetLabel = '', cent
         data: values,
         backgroundColor: isDoughnut
           ? colors
-          : colors.map(c => c + 'cc'),
+          : SINGLE_BAR_COLOR,
         borderColor: isDoughnut
           ? colors.map(c => c + '33')
-          : colors,
+          : SINGLE_BAR_COLOR,
         borderWidth: isDoughnut ? 2 : 1,
         borderRadius: isDoughnut ? 0 : 4,
         hoverOffset: 8,
