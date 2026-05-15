@@ -988,10 +988,12 @@ function renderMonthlyChart(rows) {
 
   if (mode === 'hidden') {
     timelineCard.hidden = true;
+    timelineCard.style.display = 'none';
     return;
   }
 
   timelineCard.hidden = false;
+  timelineCard.style.display = '';
 
   const periodMap = {};
   rows.forEach(row => {
