@@ -205,6 +205,7 @@
             <th><button class="sort-button" type="button" data-workshop-sort="tag">Tag <span class="sort-indicator"></span></button></th>
             <th><button class="sort-button" type="button" data-workshop-sort="type">Type <span class="sort-indicator"></span></button></th>
             <th><button class="sort-button" type="button" data-workshop-sort="attended">Attendees <span class="sort-indicator"></span></button></th>
+            <th><button class="sort-button" type="button" data-workshop-sort="newAttendees">New attendees <span class="sort-indicator"></span></button></th>
             <th><button class="sort-button" type="button" data-workshop-sort="rsvpd">RSVPs <span class="sort-indicator"></span></button></th>
             <th><button class="sort-button" type="button" data-workshop-sort="rateValue">Show rate <span class="sort-indicator"></span></button></th>
           </tr>
@@ -415,7 +416,7 @@ function processData(values) {
     (found, col) => found >= 0 ? found : idx(col), -1
   );
 
-  const parse = row => ({
+  const parse = (row, sourceIndex) => ({
     date:         (row[iDate]        || '').trim(),
     event:        (row[iName]        || '').trim(),
     tag:          (row[iTag]         || '').trim(),
@@ -428,6 +429,7 @@ function processData(values) {
     rsvpd:        (row[iRsvp]        || '').trim().toLowerCase() === 'yes',
     attended:     (row[iAttend]      || '').trim().toLowerCase() === 'yes',
     semester:     parseSemester((row[iDate] || '').trim()),
+    sourceIndex,
   });
 
   const dataRows = values.slice(1).map(parse).filter(r => r.event);
@@ -839,6 +841,21 @@ function compareSemesters(a, b) {
   return getSemesterSortValue(a) - getSemesterSortValue(b);
 }
 
+function getDateSortValue(dateStr) {
+  if (!dateStr) return Number.MAX_SAFE_INTEGER;
+  const parts = String(dateStr).split('/');
+  if (parts.length < 3) return Number.MAX_SAFE_INTEGER;
+
+  const month = parseInt(parts[0], 10);
+  const day = parseInt(parts[1], 10);
+  let year = parseInt(parts[2], 10);
+  if (!month || !day || !year) return Number.MAX_SAFE_INTEGER;
+  if (year < 100) year += 2000;
+
+  const time = new Date(year, month - 1, day).getTime();
+  return Number.isFinite(time) ? time : Number.MAX_SAFE_INTEGER;
+}
+
 function getSemesterSortValue(label) {
   const match = String(label).match(/^(Spring|Summer|Fall)\s+(\d{4})$/);
   if (!match) return Number.MAX_SAFE_INTEGER;
@@ -1061,9 +1078,22 @@ function renderChart(id, data, type, horizontal = false, datasetLabel = '', cent
 
 function renderTable(rows) {
   const evMap = {};
+  const newAttendeeStats = getNewAttendeeStats(rawRows);
   rows.forEach(r => {
     const key = r.event + '||' + r.date;
-    if (!evMap[key]) evMap[key] = { event: r.event, semester: r.semester, tag: r.tag, type: r.type, attended: 0, rsvpd: 0 };
+    if (!evMap[key]) {
+      const newStats = newAttendeeStats[key] || { count: 0, names: [] };
+      evMap[key] = {
+        event: r.event,
+        semester: r.semester,
+        tag: r.tag,
+        type: r.type,
+        attended: 0,
+        newAttendees: newStats.count,
+        newAttendeeNames: newStats.names,
+        rsvpd: 0
+      };
+    }
     evMap[key].attended++;
   });
 
@@ -1085,6 +1115,7 @@ function renderTable(rows) {
       event.tag,
       event.type,
       String(event.attended),
+      String(event.newAttendees),
       String(event.rsvpd),
       event.rateValue === null ? '' : `${Math.round(event.rateValue * 100)}%`
     ].some(value => String(value || '').toLowerCase().includes(search)));
@@ -1106,16 +1137,67 @@ function renderTable(rows) {
     const rate  = e.rateValue === null ? '—' : Math.round(e.rateValue * 100) + '%';
     const badgeClass = typeBadgeClasses[e.type] || 'badge-type-default';
     const rateClass = getRateClass(e.rateValue);
+    const newAttendeeTitle = e.newAttendeeNames.length
+      ? `New attendees: ${e.newAttendeeNames.join(', ')}`
+      : 'No new attendees';
     return `<tr>
       <td>${escapeHtml(e.event)}</td>
       <td>${escapeHtml(e.semester)}</td>
       <td>${escapeHtml(e.tag || '—')}</td>
       <td><span class="badge ${badgeClass}">${escapeHtml(e.type || '—')}</span></td>
       <td><strong>${e.attended}</strong></td>
+      <td><strong title="${escapeAttribute(newAttendeeTitle)}">${e.newAttendees}</strong></td>
       <td>${e.rsvpd || '—'}</td>
       <td><span class="rate-badge ${rateClass}">${rate}</span></td>
     </tr>`;
   }).join('');
+}
+
+function getNewAttendeeStats(rows) {
+  const workshops = {};
+
+  rows.forEach(row => {
+    const key = row.event + '||' + row.date;
+    if (!workshops[key]) {
+      workshops[key] = {
+        date: row.date,
+        firstSourceIndex: row.sourceIndex ?? Number.MAX_SAFE_INTEGER,
+        attendees: {}
+      };
+    }
+    workshops[key].firstSourceIndex = Math.min(
+      workshops[key].firstSourceIndex,
+      row.sourceIndex ?? Number.MAX_SAFE_INTEGER
+    );
+
+    const normalizedName = normalizeAttendeeName(row.attendeeName);
+    if (!normalizedName || workshops[key].attendees[normalizedName]) return;
+    workshops[key].attendees[normalizedName] = row.attendeeName.trim();
+  });
+
+  const seenAttendees = new Set();
+  const stats = {};
+  Object.entries(workshops)
+    .sort((a, b) => {
+      const dateDiff = getDateSortValue(a[1].date) - getDateSortValue(b[1].date);
+      if (dateDiff) return dateDiff;
+      return a[1].firstSourceIndex - b[1].firstSourceIndex;
+    })
+    .forEach(([key, workshop]) => {
+      const newNames = Object.entries(workshop.attendees)
+        .filter(([normalizedName]) => !seenAttendees.has(normalizedName))
+        .map(([, displayName]) => displayName)
+        .sort((a, b) => a.localeCompare(b));
+
+      stats[key] = { count: newNames.length, names: newNames };
+      Object.keys(workshop.attendees).forEach(normalizedName => seenAttendees.add(normalizedName));
+    });
+
+  return stats;
+}
+
+function normalizeAttendeeName(name) {
+  return String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
 function renderAttendeeTable(rows) {
@@ -1233,13 +1315,14 @@ function setWorkshopSort(key) {
 }
 
 function exportWorkshopTable() {
-  const header = ['Event', 'Semester', 'Tag', 'Type', 'Attendees', 'RSVPs', 'Show rate'];
+  const header = ['Event', 'Semester', 'Tag', 'Type', 'Attendees', 'New attendees', 'RSVPs', 'Show rate'];
   const rows = currentWorkshopTableRows.map(row => [
     row.event,
     row.semester,
     row.tag || '',
     row.type || '',
     row.attended,
+    row.newAttendees,
     row.rsvpd || '',
     row.rateValue === null ? '' : `${Math.round(row.rateValue * 100)}%`
   ]);
