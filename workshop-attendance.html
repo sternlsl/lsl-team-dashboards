@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Lato:wght@700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="auth.js?v=20260515-1"></script>
 
 <link rel="stylesheet" href="styles.css?v=20260501-1" />
 </head>
@@ -315,6 +316,7 @@ window.addEventListener('load', () => {
         scope: SCOPE,
         callback: handleToken,
       });
+      restoreCachedSession();
     }
   }, 100);
 });
@@ -326,13 +328,28 @@ function signIn() {
 
 function signOut() {
   if (accessToken) google.accounts.oauth2.revoke(accessToken);
+  window.LSLAuth?.clearToken(CLIENT_ID, SCOPE);
   accessToken = null;
   setUIState('landing');
+}
+
+function restoreCachedSession() {
+  const cachedToken = window.LSLAuth?.readToken(CLIENT_ID, SCOPE);
+  if (!cachedToken) return;
+  accessToken = cachedToken;
+  setUIState('loading');
+  fetchSheetData();
+}
+
+function clearCachedSession() {
+  window.LSLAuth?.clearToken(CLIENT_ID, SCOPE);
+  accessToken = null;
 }
 
 function handleToken(resp) {
   if (resp.error) { showError('Auth error: ' + resp.error); return; }
   accessToken = resp.access_token;
+  window.LSLAuth?.writeToken(CLIENT_ID, SCOPE, resp);
   setUIState('loading');
   fetchSheetData();
 }
@@ -345,6 +362,11 @@ async function fetchSheetData() {
   const url   = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}`;
   try {
     const res  = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (res.status === 401 || res.status === 403) {
+      clearCachedSession();
+      showError('Your Google session could not be used. Please sign in again.');
+      return;
+    }
     const json = await res.json();
     if (json.error) { showError('Sheets API error: ' + json.error.message); return; }
     processData(json.values || []);
