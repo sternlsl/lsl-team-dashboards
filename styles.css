@@ -1155,6 +1155,40 @@ td {
   white-space: nowrap;
 }
 
+.new-attendee-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  cursor: help;
+  outline: none;
+}
+
+.new-attendee-count:focus-visible {
+  border-radius: 4px;
+  box-shadow: 0 0 0 3px rgba(137, 229, 218, 0.32);
+}
+
+#dashboard-tooltip {
+  position: fixed;
+  z-index: 1000;
+  display: none;
+  max-width: min(360px, calc(100vw - 24px));
+  padding: 9px 11px;
+  border: 1px solid rgba(16, 153, 140, 0.24);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(28, 44, 58, 0.16);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.45;
+  pointer-events: none;
+}
+
+#dashboard-tooltip.is-visible {
+  display: block;
+}
+
 .rate-high,
 .status-resolved {
   background: rgba(16, 153, 140, 0.12);

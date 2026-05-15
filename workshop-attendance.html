@@ -1146,7 +1146,7 @@ function renderTable(rows) {
       <td>${escapeHtml(e.tag || '—')}</td>
       <td><span class="badge ${badgeClass}">${escapeHtml(e.type || '—')}</span></td>
       <td><strong>${e.attended}</strong></td>
-      <td><strong title="${escapeAttribute(newAttendeeTitle)}">${e.newAttendees}</strong></td>
+      <td><span class="new-attendee-count" tabindex="0" data-tooltip="${escapeAttribute(newAttendeeTitle)}"><strong>${e.newAttendees}</strong></span></td>
       <td>${e.rsvpd || '—'}</td>
       <td><span class="rate-badge ${rateClass}">${rate}</span></td>
     </tr>`;
@@ -1423,6 +1423,84 @@ document.querySelectorAll('[data-attendee-sort]').forEach(button => {
 });
 
 document.getElementById('attendee-export').addEventListener('click', exportAttendeeTable);
+
+let activeTooltipTarget = null;
+
+function getDashboardTooltip() {
+  let tooltip = document.getElementById('dashboard-tooltip');
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.id = 'dashboard-tooltip';
+    tooltip.setAttribute('role', 'tooltip');
+    document.body.appendChild(tooltip);
+  }
+  return tooltip;
+}
+
+function showDashboardTooltip(target) {
+  const text = target.dataset.tooltip;
+  if (!text) return;
+
+  const tooltip = getDashboardTooltip();
+  activeTooltipTarget = target;
+  tooltip.textContent = text;
+  tooltip.classList.add('is-visible');
+  positionDashboardTooltip(target, tooltip);
+}
+
+function positionDashboardTooltip(target, tooltip = getDashboardTooltip()) {
+  if (!target || !tooltip.classList.contains('is-visible')) return;
+
+  const rect = target.getBoundingClientRect();
+  const gap = 8;
+  const tooltipRect = tooltip.getBoundingClientRect();
+  const left = Math.min(
+    Math.max(rect.left + rect.width / 2 - tooltipRect.width / 2, gap),
+    window.innerWidth - tooltipRect.width - gap
+  );
+  const aboveTop = rect.top - tooltipRect.height - gap;
+  const top = aboveTop >= gap ? aboveTop : rect.bottom + gap;
+
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function hideDashboardTooltip(target = activeTooltipTarget) {
+  if (target && activeTooltipTarget && target !== activeTooltipTarget) return;
+
+  const tooltip = getDashboardTooltip();
+  tooltip.classList.remove('is-visible');
+  activeTooltipTarget = null;
+}
+
+document.addEventListener('mouseover', event => {
+  const target = event.target.closest('[data-tooltip]');
+  if (!target) return;
+  if (target.contains(event.relatedTarget)) return;
+  showDashboardTooltip(target);
+});
+
+document.addEventListener('mouseout', event => {
+  const target = event.target.closest('[data-tooltip]');
+  if (!target) return;
+  if (target.contains(event.relatedTarget)) return;
+  hideDashboardTooltip(target);
+});
+
+document.addEventListener('focusin', event => {
+  const target = event.target.closest('[data-tooltip]');
+  if (target) showDashboardTooltip(target);
+});
+
+document.addEventListener('focusout', event => {
+  const target = event.target.closest('[data-tooltip]');
+  if (target) hideDashboardTooltip(target);
+});
+
+window.addEventListener('scroll', () => hideDashboardTooltip(), true);
+window.addEventListener('resize', () => {
+  if (activeTooltipTarget) positionDashboardTooltip(activeTooltipTarget);
+});
 
 function escapeHtml(value) {
   return String(value)
