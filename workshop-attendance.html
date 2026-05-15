@@ -107,7 +107,7 @@
     </div>
   </div>
 
-  <!-- ROW 2: Affiliation + Faculty rank -->
+  <!-- ROW 2: Affiliation + Faculty categories -->
   <div class="chart-grid">
     <div class="chart-card">
       <div class="chart-card-header">
@@ -127,9 +127,9 @@
       <div class="chart-card-header">
         <div class="chart-card-heading">
           <div class="chart-title">Faculty attendance breakdown</div>
-          <div class="chart-subtitle" id="faculty-chart-subtitle">By faculty rank</div>
+          <div class="chart-subtitle" id="faculty-chart-subtitle">Adjunct, Clinical, Tenure/TT, and Other</div>
         </div>
-        <label class="sr-only" for="faculty-metric">Faculty rank attendance metric</label>
+        <label class="sr-only" for="faculty-metric">Faculty attendance metric</label>
         <select class="chart-select" id="faculty-metric" data-attendance-metric="faculty">
           <option value="average" selected>Average per workshop</option>
           <option value="total">Total attendance</option>
@@ -285,11 +285,12 @@ const ATTENDANCE_CHARTS = {
   faculty: {
     canvasId: 'chart-faculty',
     subtitleId: 'faculty-chart-subtitle',
-    key: 'facultyRank',
+    key: classifyFacultyGroup,
     type: 'bar',
     horizontal: true,
-    totalSubtitle: 'By faculty rank',
-    averageSubtitle: 'Average faculty attendees per workshop by rank'
+    groupOrder: ['Adjunct', 'Clinical', 'Tenure/Tenure-Track', 'Other'],
+    totalSubtitle: 'Adjunct, Clinical, Tenure/TT, and Other',
+    averageSubtitle: 'Average faculty attendees per workshop by category'
   },
   dept: {
     canvasId: 'chart-dept',
@@ -645,11 +646,11 @@ function renderContext(rows) {
 function renderAttendanceChart(chartId, rows) {
   const config = ATTENDANCE_CHARTS[chartId];
   const filteredRows = chartId === 'faculty'
-    ? rows.filter(r => r.facultyType === 'Full-time' || r.facultyType === 'Adjunct')
+    ? rows.filter(isFacultyAttendanceRow)
     : rows;
   const metric = chartMetrics[chartId] || 'total';
   const subtitle = metric === 'average' ? config.averageSubtitle : config.totalSubtitle;
-  let data = getAttendanceMetricData(filteredRows, config.key, metric, config.sortLabels);
+  let data = getAttendanceMetricData(filteredRows, config.key, metric, config.sortLabels, config.groupOrder);
 
   if (config.limit) data = topN(data, config.limit);
 
@@ -762,10 +763,17 @@ function renderSemesterStackedChart(rows) {
   });
 }
 
-function getAttendanceMetricData(rows, key, metric, labelComparator = null) {
+function getAttendanceMetricData(rows, key, metric, labelComparator = null, labelOrder = null) {
   const m = {};
+  if (labelOrder) {
+    labelOrder.forEach(label => {
+      m[label] = { attendees: 0, events: new Set() };
+    });
+  }
+
   rows.forEach(r => {
-    const label = r[key] || 'Unknown';
+    const value = typeof key === 'function' ? key(r) : r[key];
+    const label = value || 'Unknown';
     if (!m[label]) m[label] = { attendees: 0, events: new Set() };
     m[label].attendees++;
     m[label].events.add(r.event + '|' + r.date);
@@ -775,15 +783,38 @@ function getAttendanceMetricData(rows, key, metric, labelComparator = null) {
     .map(([label, stats]) => [
       label,
       metric === 'average'
-        ? Number((stats.attendees / stats.events.size).toFixed(1))
+        ? (stats.events.size ? Number((stats.attendees / stats.events.size).toFixed(1)) : 0)
         : stats.attendees
     ]);
 
-  entries.sort(labelComparator
-    ? (a, b) => labelComparator(a[0], b[0])
-    : (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  if (labelOrder) {
+    const orderMap = Object.fromEntries(labelOrder.map((label, index) => [label, index]));
+    entries.sort((a, b) => (orderMap[a[0]] ?? Number.MAX_SAFE_INTEGER) - (orderMap[b[0]] ?? Number.MAX_SAFE_INTEGER));
+  } else {
+    entries.sort(labelComparator
+      ? (a, b) => labelComparator(a[0], b[0])
+      : (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }
 
   return Object.fromEntries(entries);
+}
+
+const TENURE_RANKS = new Set(['Professor', 'Associate Professor', 'Assistant Professor']);
+
+function isFacultyAttendanceRow(row) {
+  return row.affil === 'Faculty'
+    || row.facultyType === 'Full-time'
+    || row.facultyType === 'Adjunct'
+    || Boolean(row.facultyRank);
+}
+
+function classifyFacultyGroup(row) {
+  const type = (row.facultyType || '').trim();
+  const rank = (row.facultyRank || '').trim();
+  if (type === 'Adjunct') return 'Adjunct';
+  if (type === 'Full-time' && /clinical/i.test(rank)) return 'Clinical';
+  if (type === 'Full-time' && TENURE_RANKS.has(rank)) return 'Tenure/Tenure-Track';
+  return 'Other';
 }
 
 function getWeightedAverageAttendance(rows, key) {

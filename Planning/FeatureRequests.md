@@ -3,10 +3,10 @@
 ## Consultations
 
 - **Color**
-  - [ ] Make uniform where possible
+  - [x] Make uniform where possible
   - [x] Separate donuts w/ padding/borders if possible
 
-- **Summary graphic**
+- [x] **Summary graphic**
   - For date range below 90 days, show weekly breakdown
   - <= 7 days, remove from view
 
@@ -44,7 +44,6 @@
 
 ## Common
 
-- Create a 3rd weekly overview pulling from each dashboard, rather than overloaded each one with excessive charts 
 - [?] **Check for persistent login**
   - [ ] ~~**If not possible, consolidate pages**~~
 - 
