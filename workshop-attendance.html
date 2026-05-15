@@ -99,8 +99,8 @@
         </div>
         <label class="sr-only" for="semester-metric">Semester attendance metric</label>
         <select class="chart-select" id="semester-metric" data-attendance-metric="semester">
-          <option value="average" selected>Average per workshop</option>
-          <option value="total">Total attendance</option>
+          <option value="average">Average per workshop</option>
+          <option value="total" selected>Total attendance</option>
         </select>
       </div>
       <div class="chart-wrap"><canvas id="chart-semester"></canvas></div>
@@ -117,8 +117,8 @@
         </div>
         <label class="sr-only" for="affiliation-metric">Affiliation attendance metric</label>
         <select class="chart-select" id="affiliation-metric" data-attendance-metric="affiliation">
-          <option value="average" selected>Average per workshop</option>
-          <option value="total">Total attendance</option>
+          <option value="average">Average per workshop</option>
+          <option value="total" selected>Total attendance</option>
         </select>
       </div>
       <div class="chart-wrap"><canvas id="chart-affiliation"></canvas></div>
@@ -131,8 +131,8 @@
         </div>
         <label class="sr-only" for="faculty-metric">Faculty attendance metric</label>
         <select class="chart-select" id="faculty-metric" data-attendance-metric="faculty">
-          <option value="average" selected>Average per workshop</option>
-          <option value="total">Total attendance</option>
+          <option value="average">Average per workshop</option>
+          <option value="total" selected>Total attendance</option>
         </select>
       </div>
       <div class="chart-wrap"><canvas id="chart-faculty"></canvas></div>
@@ -149,8 +149,8 @@
         </div>
         <label class="sr-only" for="dept-metric">Department attendance metric</label>
         <select class="chart-select" id="dept-metric" data-attendance-metric="dept">
-          <option value="average" selected>Average per workshop</option>
-          <option value="total">Total attendance</option>
+          <option value="average">Average per workshop</option>
+          <option value="total" selected>Total attendance</option>
         </select>
       </div>
       <div class="chart-wrap tall"><canvas id="chart-dept"></canvas></div>
@@ -256,10 +256,10 @@ let tableSearch = '';
 let tableSort = { key: 'attended', direction: 'desc' };
 let currentWorkshopTableRows = [];
 let chartMetrics = {
-  semester:    'average',
-  affiliation: 'average',
-  faculty:     'average',
-  dept:        'average'
+  semester:    'total',
+  affiliation: 'total',
+  faculty:     'total',
+  dept:        'total'
 };
 
 let attendeeTableSearch = '';
@@ -663,7 +663,7 @@ function renderAttendanceChart(chartId, rows) {
 }
 
 function renderSemesterStackedChart(rows) {
-  const metric = chartMetrics.semester || 'average';
+  const metric = chartMetrics.semester || 'total';
 
   // Collect all types and semesters
   const typesSet = new Set();
