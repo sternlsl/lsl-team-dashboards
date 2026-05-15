@@ -199,7 +199,7 @@ const TYPE_COLORS = {
 };
 
 const LABELED_DONUT_BASE_COLOR = '#0197CD';
-const CATEGORY_BAR_COLOR = '#0197CD';
+const SOLID_BAR_COLOR = '#0197CD';
 
 const FACULTY_GROUP_COLORS = {
   'Adjunct': LABELED_DONUT_BASE_COLOR,
@@ -665,7 +665,7 @@ function renderAll(rows) {
   renderKPIs(rows);
   renderMonthlyChart(rows);
   renderChart('chart-category', topN(countBy(rows, 'category'), 10), 'bar', true, {
-    color: CATEGORY_BAR_COLOR,
+    color: SOLID_BAR_COLOR,
     solidBarColor: true
   });
   renderConsultationTypeChart(rows);
@@ -1182,7 +1182,10 @@ function renderDeptChart(rows) {
     ? 'Top departments by unique visitors'
     : 'Top departments by consultation count';
   document.getElementById('dept-chart-subtitle').textContent = subtitle;
-  renderChart('chart-dept', data, 'bar', true);
+  renderChart('chart-dept', data, 'bar', true, {
+    color: SOLID_BAR_COLOR,
+    solidBarColor: true
+  });
 }
 
 const TENURE_RANKS = new Set(['Professor', 'Associate Professor', 'Assistant Professor']);
