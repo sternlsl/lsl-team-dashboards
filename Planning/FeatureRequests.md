@@ -16,7 +16,7 @@
 - [x] **Status**
   - [x] Cut
 
-- [ ] **What we help with**
+- [x] **What we help with**
   - Convert to horizontal bar chart
   - Direct labels if possible
   
@@ -24,7 +24,7 @@
   - Convert to donut (disregard stacks)
   - Direct labels if possible
 
-- [ ] **Consultation type**
+- [x] **Consultation type**
   - Convert to donut
 
 - [x] **Remove status KPI**

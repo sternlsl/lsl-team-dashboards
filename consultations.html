@@ -81,10 +81,10 @@
     </div>
   </div>
 
-  <div class="chart-grid full">
+  <div class="chart-grid full" id="consultation-timeline-card">
     <div class="chart-card">
-      <div class="chart-title">Consultations by month and semester</div>
-      <div class="chart-subtitle">Monthly volume stacked by consultation type</div>
+      <div class="chart-title" id="consultation-timeline-title">Consultations by month and semester</div>
+      <div class="chart-subtitle" id="consultation-timeline-subtitle">Monthly volume stacked by consultation type</div>
       <div class="chart-wrap timeline"><canvas id="chart-monthly"></canvas></div>
     </div>
   </div>
@@ -450,6 +450,37 @@ function toMonthKey(date) {
 
 function toMonthLabel(date) {
   return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
+function inclusiveDayCount(startDate, endDate) {
+  const start = Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+  const end = Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+  return Math.floor((end - start) / 86400000) + 1;
+}
+
+function getTimelineMode() {
+  if (!dateFilters.start || !dateFilters.end) return 'monthly';
+
+  const startDate = parseDateValue(dateFilters.start);
+  const endDate = parseDateValue(dateFilters.end);
+  if (!startDate || !endDate) return 'monthly';
+
+  const days = inclusiveDayCount(startDate, endDate);
+  if (days <= 7) return 'hidden';
+  if (days <= 90) return 'weekly';
+  return 'monthly';
+}
+
+function getWeekStartDate(date) {
+  const result = new Date(date);
+  const day = result.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  result.setDate(result.getDate() + offset);
+  return result;
+}
+
+function toWeekLabel(date) {
+  return `Week of ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 }
 
 // ===============================================
@@ -945,34 +976,66 @@ const stackedTotalLabelsPlugin = {
 
 function renderMonthlyChart(rows) {
   const chartId = 'chart-monthly';
-  if (charts[chartId]) charts[chartId].destroy();
+  if (charts[chartId]) {
+    charts[chartId].destroy();
+    delete charts[chartId];
+  }
 
-  const monthlyRows = rows;
-  const monthMap = {};
-  monthlyRows.forEach(row => {
-    if (!monthMap[row.monthKey]) {
-      monthMap[row.monthKey] = {
-        label: row.monthLabel,
-        semester: row.semester,
-        counts: {}
-      };
+  const timelineCard = document.getElementById('consultation-timeline-card');
+  const title = document.getElementById('consultation-timeline-title');
+  const subtitle = document.getElementById('consultation-timeline-subtitle');
+  const mode = getTimelineMode();
+
+  if (mode === 'hidden') {
+    timelineCard.hidden = true;
+    return;
+  }
+
+  timelineCard.hidden = false;
+
+  const periodMap = {};
+  rows.forEach(row => {
+    let key;
+    let label;
+    let semester = null;
+
+    if (mode === 'weekly') {
+      if (!row.date) return;
+      const weekStart = getWeekStartDate(row.date);
+      key = toDateKey(weekStart);
+      label = toWeekLabel(weekStart);
+    } else {
+      key = row.monthKey;
+      label = row.monthLabel;
+      semester = row.semester;
     }
-    monthMap[row.monthKey].counts[row.type] = (monthMap[row.monthKey].counts[row.type] || 0) + 1;
+
+    if (!periodMap[key]) periodMap[key] = { label, semester, counts: {} };
+    periodMap[key].counts[row.type] = (periodMap[key].counts[row.type] || 0) + 1;
   });
 
-  const months = Object.keys(monthMap).sort();
-  const typeSet = new Set(monthlyRows.map(row => row.type));
+  const periods = Object.keys(periodMap).sort();
+  const typeSet = new Set();
+  periods.forEach(period => {
+    Object.keys(periodMap[period].counts).forEach(type => typeSet.add(type));
+  });
   const types = STACKED_TYPE_ORDER.filter(type => typeSet.has(type))
     .concat([...typeSet].filter(type => !STACKED_TYPE_ORDER.includes(type)).sort());
+  const totalLabel = mode === 'weekly' ? 'Weekly total' : 'Monthly total';
+
+  title.textContent = mode === 'weekly' ? 'Consultations by week' : 'Consultations by month and semester';
+  subtitle.textContent = mode === 'weekly'
+    ? 'Weekly volume stacked by consultation type'
+    : 'Monthly volume stacked by consultation type';
 
   const ctx = document.getElementById(chartId).getContext('2d');
   charts[chartId] = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: months.map(month => monthMap[month].label),
+      labels: periods.map(period => periodMap[period].label),
       datasets: types.map((type, index) => ({
         label: type,
-        data: months.map(month => monthMap[month].counts[type] || 0),
+        data: periods.map(period => periodMap[period].counts[type] || 0),
         backgroundColor: (TYPE_COLORS[type] || COLORS[index % COLORS.length]) + 'dd',
         borderColor: TYPE_COLORS[type] || COLORS[index % COLORS.length],
         borderWidth: 1,
@@ -983,7 +1046,7 @@ function renderMonthlyChart(rows) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 42, bottom: 8 } },
+      layout: { padding: { top: mode === 'monthly' ? 42 : 24, bottom: 8 } },
       plugins: {
         legend: {
           position: 'bottom',
@@ -1005,9 +1068,9 @@ function renderMonthlyChart(rows) {
           bodyFont: { family: 'Montserrat', size: 13 },
           callbacks: {
             afterBody: context => {
-              const month = months[context[0].dataIndex];
-              const total = Object.values(monthMap[month].counts).reduce((sum, value) => sum + value, 0);
-              return `Monthly total: ${total}`;
+              const period = periods[context[0].dataIndex];
+              const total = Object.values(periodMap[period].counts).reduce((sum, value) => sum + value, 0);
+              return `${totalLabel}: ${total}`;
             }
           }
         },
@@ -1035,7 +1098,9 @@ function renderMonthlyChart(rows) {
         }
       }
     },
-    plugins: [semesterBandsPlugin(months.map(month => monthMap[month].semester)), stackedTotalLabelsPlugin]
+    plugins: mode === 'monthly'
+      ? [semesterBandsPlugin(periods.map(period => periodMap[period].semester)), stackedTotalLabelsPlugin]
+      : [stackedTotalLabelsPlugin]
   });
 }
 
