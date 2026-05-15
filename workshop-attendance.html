@@ -802,10 +802,7 @@ function getAttendanceMetricData(rows, key, metric, labelComparator = null, labe
 const TENURE_RANKS = new Set(['Professor', 'Associate Professor', 'Assistant Professor']);
 
 function isFacultyAttendanceRow(row) {
-  return row.affil === 'Faculty'
-    || row.facultyType === 'Full-time'
-    || row.facultyType === 'Adjunct'
-    || Boolean(row.facultyRank);
+  return row.affil === 'Faculty';
 }
 
 function classifyFacultyGroup(row) {
