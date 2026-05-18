@@ -36,8 +36,8 @@
 
 ## Workshop attendance
 
-- [ ] Expanded Workshop Breakdown - Add first-time attendees
-- [ ] Default all selectors to total attendance
+- [x] Expanded Workshop Breakdown - Add first-time attendees
+- [x] Default all selectors to total attendance
 - [x] **Faculty attendance breakdown**
   - [x] Consolidate to show the 3 main faculty categories
 

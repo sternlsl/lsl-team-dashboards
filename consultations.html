@@ -79,6 +79,11 @@
       <span class="kpi-value" id="kpi-hours">-</span>
       <span class="kpi-sub">consultation hours</span>
     </div>
+    <div class="kpi">
+      <span class="kpi-label">First-time visitors</span>
+      <span class="kpi-value" id="kpi-new-clients">-</span>
+      <span class="kpi-sub">clients whose first visit is in this period</span>
+    </div>
   </div>
 
   <div class="chart-grid full" id="consultation-timeline-card">
@@ -745,6 +750,26 @@ function renderContext(rows) {
   }
 }
 
+function countFirstTimeVisitors(rows) {
+  const globalFirst = {};
+  rawRows.forEach(row => {
+    if (!row.client || row.client === 'Unknown' || !row.dateKey) return;
+    if (!globalFirst[row.client] || row.dateKey < globalFirst[row.client]) {
+      globalFirst[row.client] = row.dateKey;
+    }
+  });
+
+  const filteredFirst = {};
+  rows.forEach(row => {
+    if (!row.client || row.client === 'Unknown' || !row.dateKey) return;
+    if (!filteredFirst[row.client] || row.dateKey < filteredFirst[row.client]) {
+      filteredFirst[row.client] = row.dateKey;
+    }
+  });
+
+  return Object.entries(filteredFirst).filter(([client, date]) => globalFirst[client] === date).length;
+}
+
 function renderKPIs(rows) {
   const timedRows = rows.filter(r => r.minutes !== null);
   const totalMinutes = timedRows.reduce((sum, row) => sum + row.minutes, 0);
@@ -754,6 +779,7 @@ function renderKPIs(rows) {
   document.getElementById('kpi-clients').textContent = uniqueClients.size.toLocaleString();
   document.getElementById('kpi-avg-time').textContent = timedRows.length ? `${Math.round(totalMinutes / timedRows.length)}` : '-';
   document.getElementById('kpi-hours').textContent = timedRows.length ? (totalMinutes / 60).toFixed(1) : '-';
+  document.getElementById('kpi-new-clients').textContent = countFirstTimeVisitors(rows).toLocaleString();
 }
 
 function countBy(rows, key) {
