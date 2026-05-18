@@ -456,6 +456,13 @@ function initializeFilters(rows) {
     FILTER_CONFIGS.map(config => [config.id, new Set()])
   );
 
+  const params = new URLSearchParams(location.search);
+  FILTER_CONFIGS.forEach(config => {
+    params.getAll(config.id).forEach(val => {
+      if (filterOptions[config.id]?.includes(val)) filtersState[config.id].add(val);
+    });
+  });
+
   renderFilterControls();
   attachFilterEvents();
 }
@@ -585,6 +592,13 @@ function getFiltered() {
 }
 
 function applyFilters() {
+  const params = new URLSearchParams();
+  FILTER_CONFIGS.forEach(config => {
+    filtersState[config.id].forEach(val => params.append(config.id, val));
+  });
+  const qs = params.toString();
+  history.replaceState(null, '', qs ? '?' + qs : location.pathname);
+
   renderFilterControls();
   attachFilterEvents();
   renderAll(getFiltered());
